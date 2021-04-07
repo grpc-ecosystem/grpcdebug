@@ -1,0 +1,200 @@
+{
+  "config": [
+    {
+      "node": {
+        "id": "projects/1040920224690/networks/default/nodes/5cc9170c-d5b4-4061-b431-c1d43e6ac0ab",
+        "cluster": "cluster",
+        "metadata": {
+            "INSTANCE_IP": "192.168.120.31",
+            "TRAFFICDIRECTOR_GCP_PROJECT_NUMBER": "1040920224690",
+            "TRAFFICDIRECTOR_NETWORK_NAME": "default"
+          },
+        "locality": {
+          "zone": "us-central1-a"
+        },
+        "userAgentName": "gRPC Java",
+        "userAgentVersion": "1.38.0-SNAPSHOT",
+        "clientFeatures": [
+          "envoy.lb.does_not_support_overprovisioning"
+        ]
+      },
+      "xdsConfig": [
+        {
+          "listenerConfig": {
+            "versionInfo": "1617141154495058478",
+            "dynamicListeners": [
+              {
+                "name": "xds-test-server:1337",
+                "activeState": {
+                  "versionInfo": "1617141154495058478",
+                  "listener": {
+                    "@type": "type.googleapis.com/envoy.config.listener.v3.Listener",
+                    "apiListener": {
+                      "apiListener": {
+                        "@type": "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager",
+                        "httpFilters": [
+                          {
+                            "name": "envoy.filters.http.fault",
+                            "typedConfig": {
+                              "@type": "type.googleapis.com/envoy.extensions.filters.http.fault.v3.HTTPFault"
+                            }
+                          },
+                          {
+                            "name": "envoy.filters.http.router",
+                            "typedConfig": {
+                              "@type": "type.googleapis.com/envoy.extensions.filters.http.router.v3.Router",
+                              "suppressEnvoyHeaders": true
+                            }
+                          }
+                        ],
+                        "rds": {
+                          "configSource": {
+                            "ads": {},
+                            "resourceApiVersion": "V3"
+                          },
+                          "routeConfigName": "URL_MAP/1040920224690_sergii-psm-test-url-map_0_xds-test-server:1337"
+                        },
+                        "statPrefix": "trafficdirector"
+                      }
+                    },
+                    "name": "xds-test-server:1337"
+                  },
+                  "lastUpdated": "2021-03-31T01:20:33.144Z"
+                },
+                "clientStatus": "ACKED"
+              }
+            ]
+          }
+        },
+        {
+          "routeConfig": {
+            "dynamicRouteConfigs": [
+              {
+                "versionInfo": "1617141154495058478",
+                "routeConfig": {
+                  "@type": "type.googleapis.com/envoy.config.route.v3.RouteConfiguration",
+                  "name": "URL_MAP/1040920224690_sergii-psm-test-url-map_0_xds-test-server:1337",
+                  "virtualHosts": [
+                    {
+                      "domains": [
+                        "xds-test-server:1337"
+                      ],
+                      "routes": [
+                        {
+                          "match": {
+                            "prefix": ""
+                          },
+                          "route": {
+                            "cluster": "cloud-internal-istio:cloud_mp_1040920224690_6530603179561593229",
+                            "timeout": "30s",
+                            "retryPolicy": {
+                              "retryOn": "gateway-error",
+                              "numRetries": 1,
+                              "perTryTimeout": "30s"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "lastUpdated": "2021-03-31T01:20:33.302Z",
+                "clientStatus": "ACKED"
+              }
+            ]
+          }
+        },
+        {
+          "clusterConfig": {
+            "versionInfo": "1617141154495058478",
+            "dynamicActiveClusters": [
+              {
+                "versionInfo": "1617141154495058478",
+                "cluster": {
+                  "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster",
+                  "circuitBreakers": {
+                    "thresholds": [
+                      {
+                        "maxConnections": 2147483647,
+                        "maxPendingRequests": 2147483647,
+                        "maxRequests": 2147483647,
+                        "maxRetries": 2147483647
+                      }
+                    ]
+                  },
+                  "commonLbConfig": {
+                    "healthyPanicThreshold": {
+                      "value": 1
+                    },
+                    "localityWeightedLbConfig": {}
+                  },
+                  "connectTimeout": "30s",
+                  "edsClusterConfig": {
+                    "edsConfig": {
+                      "ads": {},
+                      "initialFetchTimeout": "15s",
+                      "resourceApiVersion": "V3"
+                    }
+                  },
+                  "http2ProtocolOptions": {
+                    "maxConcurrentStreams": 100
+                  },
+                  "lrsServer": {
+                    "self": {}
+                  },
+                  "metadata": {
+                    "filterMetadata": {
+                      "com.google.trafficdirector": {
+                        "backend_service_name": "sergii-psm-test-backend-service"
+                      }
+                    }
+                  },
+                  "name": "cloud-internal-istio:cloud_mp_1040920224690_6530603179561593229",
+                  "type": "EDS"
+                },
+                "lastUpdated": "2021-03-31T01:20:33.853Z",
+                "clientStatus": "ACKED"
+              }
+            ]
+          }
+        },
+        {
+          "endpointConfig": {
+            "dynamicEndpointConfigs": [
+              {
+                "versionInfo": "1",
+                "endpointConfig": {
+                  "@type": "type.googleapis.com/envoy.config.endpoint.v3.ClusterLoadAssignment",
+                  "clusterName": "cloud-internal-istio:cloud_mp_1040920224690_6530603179561593229",
+                  "endpoints": [
+                    {
+                      "locality": {
+                        "subZone": "jf:us-central1-a_7062512536751318190_neg"
+                      },
+                      "lbEndpoints": [
+                        {
+                          "endpoint": {
+                            "address": {
+                              "socketAddress": {
+                                "address": "192.168.120.26",
+                                "portValue": 8080
+                              }
+                            }
+                          },
+                          "healthStatus": "HEALTHY"
+                        }
+                      ],
+                      "loadBalancingWeight": 100
+                    }
+                  ]
+                },
+                "lastUpdated": "2021-03-31T01:20:33.936Z",
+                "clientStatus": "ACKED"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
