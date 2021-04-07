@@ -1,5 +1,4 @@
 // Testserver mocking the responses of Channelz/CSDS/Health
-
 package main
 
 import (
@@ -37,8 +36,25 @@ var (
 	secureAdminPortFlag = flag.Int("secure_admin", 50052, "the secure admin port")
 	healthFlag          = flag.Bool("health", true, "the health checking status")
 	qpsFlag             = flag.Int("qps", 10, "The size of the generated load against itself")
-	abortPercentageFlag = flag.Int("abort", 10, "The percentage of failed RPCs")
+	abortPercentageFlag = flag.Int("abort_percentage", 10, "The percentage of failed RPCs")
 )
+
+// Prepare the CSDS response
+var csdsResponse csdspb.ClientStatusResponse
+
+func init() {
+	file, err := os.Open("csds_config_dump.json")
+	if err != nil {
+		panic(err)
+	}
+	configDump, err := ioutil.ReadAll(file)
+	if err != nil {
+		panic(err)
+	}
+	if err := protojson.Unmarshal([]byte(configDump), &csdsResponse); err != nil {
+		panic(err)
+	}
+}
 
 // Implements the Greeter service
 type server struct {
@@ -46,12 +62,9 @@ type server struct {
 }
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	if int(r.Int31n(100)) <= *abortPercentageFlag {
-		return nil, grpc.Errorf(
-			codes.Code(r.Int31n(15)+1),
-			"Fault injected",
-		)
+
+	if int(rand.Int31n(100)) <= *abortPercentageFlag {
+		return nil, grpc.Errorf(codes.Code(rand.Int31n(15)+1), "Fault injected")
 	}
 	return &pb.HelloReply{Message: "Hello " + in.Name}, nil
 }
@@ -62,19 +75,7 @@ type mockCsdsServer struct {
 }
 
 func (*mockCsdsServer) FetchClientStatus(ctx context.Context, req *csdspb.ClientStatusRequest) (*csdspb.ClientStatusResponse, error) {
-	file, err := os.Open("csds_config_dump.json")
-	if err != nil {
-		panic(err)
-	}
-	configDump, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic(err)
-	}
-	var response csdspb.ClientStatusResponse
-	if err := protojson.Unmarshal([]byte(configDump), &response); err != nil {
-		panic(err)
-	}
-	return &response, nil
+	return &csdsResponse, nil
 }
 
 func setupAdminServer(s *grpc.Server) {
@@ -95,6 +96,8 @@ func setupAdminServer(s *grpc.Server) {
 func main() {
 	// Parse the flags
 	flag.Parse()
+	// Seed the RNG
+	rand.Seed(time.Now().UnixNano())
 	// Creates the primary server
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *servingPortFlag))
 	if err != nil {
@@ -109,6 +112,7 @@ func main() {
 	s := grpc.NewServer(grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
 	pb.RegisterGreeterServer(s, &server{})
 	go s.Serve(lis)
+	defer s.Stop()
 	// Creates the admin server without credentials
 	insecureListener, err := net.Listen("tcp", fmt.Sprintf(":%d", *adminPortFlag))
 	if err != nil {
@@ -118,6 +122,7 @@ func main() {
 	insecureAdminServer := grpc.NewServer()
 	setupAdminServer(insecureAdminServer)
 	go insecureAdminServer.Serve(insecureListener)
+	defer insecureAdminServer.Stop()
 	fmt.Printf("Serving Insecure Admin Services on :%d\n", *adminPortFlag)
 	// Creates the admin server with credentials
 	secureListener, err := net.Listen("tcp", fmt.Sprintf(":%d", *secureAdminPortFlag))
@@ -128,6 +133,7 @@ func main() {
 	secureAdminServer := grpc.NewServer(grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
 	setupAdminServer(secureAdminServer)
 	go secureAdminServer.Serve(secureListener)
+	defer secureAdminServer.Stop()
 	fmt.Printf("Serving Secure Admin Services on :%d\n", *secureAdminPortFlag)
 	// Creates a client to hydrate the primary server
 	creds, err := credentials.NewClientTLSFromFile(testdata.Path("ca.pem"), "*.test.youtube.com")

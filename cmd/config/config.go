@@ -2,71 +2,43 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
-	"regexp"
 	"runtime"
-	"strings"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
 )
 
 // SecurityType is the enum type of available security modes
-type SecurityType int
+type SecurityType string
 
 const (
 	// TypeInsecure is the insecure security mode and it is the default value
-	TypeInsecure SecurityType = iota
+	TypeInsecure SecurityType = "insecure"
 	// TypeTls is the TLS security mode, which requires caller to provide
 	// credentials to connect to peer
-	TypeTls
+	TypeTls = "tls"
 )
 
 // The environment variable name of getting the server configs
 const grpcdebugServerConfigEnvName = "GRPCDEBUG_CONFIG"
 
-func (e SecurityType) String() string {
-	switch e {
-	case TypeInsecure:
-		return "Insecure"
-	case TypeTls:
-		return "TLS"
-	default:
-		return fmt.Sprintf("%d", int(e))
-	}
-}
-
 // ServerConfig is the configuration for how to connect to a target
 type ServerConfig struct {
-	Pattern            string
 	RealAddress        string
 	Security           SecurityType
 	CredentialFile     string
 	ServerNameOverride string
 }
 
-func parseServerPattern(x string) (string, error) {
-	var matcher = regexp.MustCompile(`^Server\s+?([A-Za-z0-9-_\.\*\?:]*)$`)
-	tokens := matcher.FindStringSubmatch(x)
-	if len(tokens) != 2 {
-		return "", fmt.Errorf("Invalid server pattern: %v", x)
-	}
-	return strings.TrimSpace(tokens[1]), nil
+type grpcdebugConfig struct {
+	Servers map[string]ServerConfig
 }
 
-func parseServerOption(x string) (string, string, error) {
-	var matcher = regexp.MustCompile(`^(\w+?)\s+?(\S*)$`)
-	tokens := matcher.FindStringSubmatch(x)
-	if len(tokens) != 3 {
-		return "", "", fmt.Errorf("Invalid server option: %v", x)
-	}
-	return strings.TrimSpace(tokens[1]), strings.TrimSpace(tokens[2]), nil
-}
-
-func loadServerConfigsFromFile(path string) []ServerConfig {
+func loadServerConfigsFromFile(path string) map[string]ServerConfig {
 	file, err := os.Open(path)
 	if err != nil {
 		panic(err)
@@ -75,51 +47,17 @@ func loadServerConfigsFromFile(path string) []ServerConfig {
 	if err != nil {
 		panic(err)
 	}
-	lines := strings.Split(string(bytes), "\n")
-	var configs []ServerConfig
-	var current *ServerConfig
-	for i, line := range lines {
-		if strings.HasPrefix(line, "Server") {
-			pattern, err := parseServerPattern(line)
-			if err != nil {
-				log.Fatalf("Failed to parse config [%v:%d]: %v", path, i, err)
-			}
-			configs = append(configs, ServerConfig{Pattern: pattern})
-			current = &configs[len(configs)-1]
-		} else {
-			stem := strings.TrimSpace(line)
-			if stem == "" {
-				// Allow black lines, skip them
-				continue
-			}
-			key, value, err := parseServerOption(stem)
-			if err != nil {
-				log.Fatalf("Failed to parse config [%v:%d]: %v", path, i, err)
-			}
-			switch key {
-			case "RealAddress":
-				current.RealAddress = value
-			case "Security":
-				switch strings.ToLower(value) {
-				case "insecure":
-					current.Security = TypeInsecure
-				case "tls":
-					current.Security = TypeTls
-				default:
-					log.Fatalf("Unsupported security model: %v", value)
-				}
-			case "CredentialFile":
-				current.CredentialFile = value
-			case "ServerNameOverride":
-				current.ServerNameOverride = value
-			}
-		}
+	var config grpcdebugConfig
+	err = yaml.Unmarshal(bytes, config)
+	if err != nil {
+		panic(err)
 	}
-	verbose.Debugf("Loaded server configs from %v: %v", path, configs)
-	return configs
+	verbose.Debugf("Loaded grpcdebug config from %v: %v", path, config)
+	return config.Servers
 }
 
-func UserConfigDir() (string, error) {
+// userConfigDir is copied here, so we can support Go v1.12
+func userConfigDir() (string, error) {
 	var dir string
 	switch runtime.GOOS {
 	case "windows":
@@ -155,17 +93,17 @@ func UserConfigDir() (string, error) {
 	return dir, nil
 }
 
-func loadServerConfigs() []ServerConfig {
+func loadServerConfigs() map[string]ServerConfig {
 	if value := os.Getenv(grpcdebugServerConfigEnvName); value != "" {
 		return loadServerConfigsFromFile(value)
 	}
 	// Try to load from work directory, if exists
-	if _, err := os.Stat("./grpcdebug_config"); err == nil {
-		return loadServerConfigsFromFile("./grpcdebug_config")
+	if _, err := os.Stat("./grpcdebug_config.yaml"); err == nil {
+		return loadServerConfigsFromFile("./grpcdebug_config.yaml")
 	}
 	// Try to load from user config directory, if exists
-	dir, _ := UserConfigDir()
-	defaultUserConfig := path.Join(dir, "grpcdebug_config")
+	dir, _ := userConfigDir()
+	defaultUserConfig := path.Join(dir, "grpcdebug_config.yaml")
 	if _, err := os.Stat(defaultUserConfig); err == nil {
 		return loadServerConfigsFromFile(defaultUserConfig)
 	}
@@ -174,8 +112,12 @@ func loadServerConfigs() []ServerConfig {
 
 // GetServerConfig returns a connect configuration for the given target
 func GetServerConfig(target string) ServerConfig {
-	for _, config := range loadServerConfigs() {
-		if config.Pattern == target {
+	for pattern, config := range loadServerConfigs() {
+		// TODO(lidiz): support wildcards
+		if pattern == target {
+			if config.RealAddress == "" {
+				config.RealAddress = pattern
+			}
 			return config
 		}
 	}

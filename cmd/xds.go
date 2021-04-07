@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
+	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
 
 	adminpb "github.com/envoyproxy/go-control-plane/envoy/admin/v3"
 	clusterpb "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
@@ -18,12 +20,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func printJson(m proto.Message) error {
-	var option protojson.MarshalOptions
-	option.Multiline = true
-	option.Indent = "  "
-	option.UseProtoNames = false
-	option.UseEnumNumbers = false
+func printJSON(m proto.Message) error {
+	option := protojson.MarshalOptions{
+		Multiline:      true,
+		Indent:         "  ",
+		UseProtoNames:  false,
+		UseEnumNumbers: false,
+	}
 	jsonbytes, err := option.Marshal(m)
 	if err != nil {
 		return err
@@ -32,28 +35,37 @@ func printJson(m proto.Message) error {
 	return nil
 }
 
-func sortPerXdsConfigs(clientStatus *csdspb.ClientStatusResponse) {
-	var xdsConfigs [4]*csdspb.PerXdsConfig
-	for _, xdsConfig := range clientStatus.Config[0].XdsConfig {
-		switch xdsConfig.PerXdsConfig.(type) {
-		case *csdspb.PerXdsConfig_ListenerConfig:
-			xdsConfigs[0] = xdsConfig
-		case *csdspb.PerXdsConfig_RouteConfig:
-			xdsConfigs[1] = xdsConfig
-		case *csdspb.PerXdsConfig_ClusterConfig:
-			xdsConfigs[2] = xdsConfig
-		case *csdspb.PerXdsConfig_EndpointConfig:
-			xdsConfigs[3] = xdsConfig
-		}
+func priorityPerXdsConfig(x *csdspb.PerXdsConfig) int {
+	switch x.PerXdsConfig.(type) {
+	case *csdspb.PerXdsConfig_ListenerConfig:
+		return 0
+	case *csdspb.PerXdsConfig_RouteConfig:
+		return 1
+	case *csdspb.PerXdsConfig_ClusterConfig:
+		return 2
+	case *csdspb.PerXdsConfig_EndpointConfig:
+		return 3
+	default:
+		return 4
 	}
-	clientStatus.Config[0].XdsConfig = xdsConfigs[:]
+}
+
+func sortPerXdsConfigs(clientStatus *csdspb.ClientStatusResponse) {
+	var xdsConfigs []*csdspb.PerXdsConfig = clientStatus.Config[0].XdsConfig
+	sort.Slice(xdsConfigs, func(i, j int) bool {
+		return priorityPerXdsConfig(xdsConfigs[i]) < priorityPerXdsConfig(xdsConfigs[j])
+	})
+	clientStatus.Config[0].XdsConfig = xdsConfigs
 }
 
 func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 	clientStatus := transport.FetchClientStatus()
+	if len(clientStatus.Config) != 1 {
+		return fmt.Errorf("Unexpected number of ClientConfig %v", len(clientStatus.Config))
+	}
 	if len(args) == 0 {
 		sortPerXdsConfigs(clientStatus)
-		return printJson(clientStatus)
+		return printJSON(clientStatus)
 	}
 	// Filter the CSDS output
 	var demand string
@@ -62,23 +74,24 @@ func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 		switch xdsConfig.PerXdsConfig.(type) {
 		case *csdspb.PerXdsConfig_ListenerConfig:
 			if demand == "lds" {
-				return printJson(xdsConfig.GetListenerConfig())
+				return printJSON(xdsConfig.GetListenerConfig())
 			}
 		case *csdspb.PerXdsConfig_RouteConfig:
 			if demand == "rds" {
-				return printJson(xdsConfig.GetRouteConfig())
+				return printJSON(xdsConfig.GetRouteConfig())
 			}
 		case *csdspb.PerXdsConfig_ClusterConfig:
 			if demand == "cds" {
-				return printJson(xdsConfig.GetClusterConfig())
+				return printJSON(xdsConfig.GetClusterConfig())
 			}
 		case *csdspb.PerXdsConfig_EndpointConfig:
 			if demand == "eds" {
-				return printJson(xdsConfig.GetEndpointConfig())
+				return printJSON(xdsConfig.GetEndpointConfig())
 			}
 		}
 	}
-	return fmt.Errorf("Failed to find xDS config with type %s", args[0])
+	verbose.Debugf("Failed to find xDS config with type %s", args[0])
+	return nil
 }
 
 var xdsConfigCmd = &cobra.Command{
@@ -96,15 +109,11 @@ type xdsResourceStatusEntry struct {
 	LastUpdated *timestamppb.Timestamp
 }
 
-func prettyClientResourceStatus(s adminpb.ClientResourceStatus) string {
-	return adminpb.ClientResourceStatus_name[int32(s)]
-}
-
 func printStatusEntry(entry *xdsResourceStatusEntry) {
 	fmt.Fprintf(
 		w, "%v\t%v\t%v\t%v\t%v\t\n",
 		entry.Name,
-		prettyClientResourceStatus(entry.Status),
+		entry.Status,
 		entry.Version,
 		entry.Type,
 		prettyTime(entry.LastUpdated),
@@ -120,7 +129,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 		switch xdsConfig.PerXdsConfig.(type) {
 		case *csdspb.PerXdsConfig_ListenerConfig:
 			for _, dynamicListener := range xdsConfig.GetListenerConfig().DynamicListeners {
-				var entry = xdsResourceStatusEntry{
+				entry := xdsResourceStatusEntry{
 					Name:   dynamicListener.Name,
 					Status: dynamicListener.ClientStatus,
 				}
@@ -133,7 +142,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 			}
 		case *csdspb.PerXdsConfig_RouteConfig:
 			for _, dynamicRouteConfig := range xdsConfig.GetRouteConfig().DynamicRouteConfigs {
-				var entry = xdsResourceStatusEntry{
+				entry := xdsResourceStatusEntry{
 					Status:      dynamicRouteConfig.ClientStatus,
 					Version:     dynamicRouteConfig.VersionInfo,
 					Type:        dynamicRouteConfig.RouteConfig.TypeUrl,
@@ -150,7 +159,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 			}
 		case *csdspb.PerXdsConfig_ClusterConfig:
 			for _, dynamicCluster := range xdsConfig.GetClusterConfig().DynamicActiveClusters {
-				var entry = xdsResourceStatusEntry{
+				entry := xdsResourceStatusEntry{
 					Status:      dynamicCluster.ClientStatus,
 					Version:     dynamicCluster.VersionInfo,
 					Type:        dynamicCluster.Cluster.TypeUrl,
@@ -167,7 +176,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 			}
 		case *csdspb.PerXdsConfig_EndpointConfig:
 			for _, dynamicEndpoint := range xdsConfig.GetEndpointConfig().GetDynamicEndpointConfigs() {
-				var entry = xdsResourceStatusEntry{
+				entry := xdsResourceStatusEntry{
 					Status:      dynamicEndpoint.ClientStatus,
 					Version:     dynamicEndpoint.VersionInfo,
 					Type:        dynamicEndpoint.EndpointConfig.TypeUrl,

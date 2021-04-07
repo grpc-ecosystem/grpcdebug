@@ -11,14 +11,24 @@ var healthCmd = &cobra.Command{
 	Use:   "health [service names]",
 	Short: "Check health status of the target service (default \"\").",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			fmt.Println(transport.GetHealthStatus(""))
-			return nil
+		// If there are multiple queries, print as table.
+		var services []string
+		services = append(services, "")
+		for _, arg := range args {
+			if arg != "" {
+				services = append(services, arg)
+			}
 		}
-		for _, service := range args {
+		for _, service := range services {
+			var service_name string
+			if service == "" {
+				service_name = "<Overall>"
+			} else {
+				service_name = service
+			}
 			fmt.Fprintf(
 				w, "%v:\t%v\t\n",
-				service,
+				service_name,
 				transport.GetHealthStatus(service),
 			)
 		}

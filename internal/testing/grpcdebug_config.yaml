@@ -1,0 +1,13 @@
+Servers:
+  dev:
+    RealAddress: localhost:50051
+    Security: insecure
+  prod:
+    RealAddress: "localhost:50052"
+    Security: tls
+    CredentialFile: ./internal/testing/ca.pem
+    ServerNameOverride: "*.test.youtube.com"
+ "localhost:50052":
+    Security: tls
+    CredentialFile: ./internal/testing/ca.pem
+    ServerNameOverride: "*.test.youtube.com"

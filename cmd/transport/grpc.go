@@ -10,7 +10,6 @@ import (
 	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
 	"google.golang.org/grpc"
 	zpb "google.golang.org/grpc/channelz/grpc_channelz_v1"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -19,6 +18,8 @@ var conn *grpc.ClientConn
 var channelzClient zpb.ChannelzClient
 var csdsClient csdspb.ClientStatusDiscoveryServiceClient
 var healthClient healthpb.HealthClient
+
+var connectionTimeout = time.Second * 5
 
 // Connect connects to the service at address and creates stubs
 func Connect(c config.ServerConfig) {
@@ -34,49 +35,29 @@ func Connect(c config.ServerConfig) {
 	} else {
 		credOption = grpc.WithInsecure()
 	}
-	// Pick the address
-	var address string
-	if c.RealAddress != "" {
-		address = c.RealAddress
-	} else {
-		address = c.Pattern
-	}
-	// Dial
-	conn, err = grpc.Dial(address, credOption)
+	// Dial and wait for READY
+	conn, err = grpc.DialContext(context.Background(), c.RealAddress, credOption, grpc.WithBlock(), grpc.WithTimeout(connectionTimeout))
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}
 	channelzClient = zpb.NewChannelzClient(conn)
 	csdsClient = csdspb.NewClientStatusDiscoveryServiceClient(conn)
 	healthClient = healthpb.NewHealthClient(conn)
-	// Wait for ready
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	var state connectivity.State = conn.GetState()
-	for state != connectivity.Ready {
-		conn.WaitForStateChange(ctx, state)
-		if ctx.Err() != nil {
-			log.Fatalf("failed to establish connection to address: %v", address)
-		}
-		state = conn.GetState()
-	}
-}
-
-// IsConnected checks if the connection is ready to use
-func IsConnected() bool {
-	if conn == nil {
-		return false
-	}
-	return conn.GetState() == connectivity.Ready
 }
 
 // Channels returns all available channels
 func Channels() []*zpb.Channel {
-	channels, err := channelzClient.GetTopChannels(context.Background(), &zpb.GetTopChannelsRequest{})
-	if err != nil {
-		log.Fatalf("failed to fetch top channels: %v", err)
+	var allChannels []*zpb.Channel
+	for {
+		channels, err := channelzClient.GetTopChannels(context.Background(), &zpb.GetTopChannelsRequest{})
+		if err != nil {
+			log.Fatalf("failed to fetch top channels: %v", err)
+		}
+		allChannels = append(allChannels, channels.Channel...)
+		if channels.End {
+			return allChannels
+		}
 	}
-	return channels.Channel
 }
 
 // Subchannel returns the queried subchannel
@@ -101,11 +82,17 @@ func Subchannels() []*zpb.Subchannel {
 
 // Servers returns all available servers
 func Servers() []*zpb.Server {
-	servers, err := channelzClient.GetServers(context.Background(), &zpb.GetServersRequest{})
-	if err != nil {
-		log.Fatalf("failed to fetch servers: %v", err)
+	var allServers []*zpb.Server
+	for {
+		servers, err := channelzClient.GetServers(context.Background(), &zpb.GetServersRequest{})
+		if err != nil {
+			log.Fatalf("failed to fetch servers: %v", err)
+		}
+		allServers = append(allServers, servers.Server...)
+		if servers.End {
+			return allServers
+		}
 	}
-	return servers.Server
 }
 
 // Socket returns a socket
@@ -162,7 +149,8 @@ func FetchClientStatus() *csdspb.ClientStatusResponse {
 func GetHealthStatus(service string) string {
 	resp, err := healthClient.Check(context.Background(), &healthpb.HealthCheckRequest{Service: service})
 	if err != nil {
-		log.Fatalf("failed to fetch health status for \"%s\": %v", service, err)
+		verbose.Debugf("failed to fetch health status for \"%s\": %v", service, err)
+		return healthpb.HealthCheckResponse_SERVICE_UNKNOWN.String()
 	}
-	return healthpb.HealthCheckResponse_ServingStatus_name[int32(resp.Status)]
+	return resp.Status.String()
 }
