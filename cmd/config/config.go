@@ -7,9 +7,8 @@ import (
 	"path"
 	"runtime"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
+	"gopkg.in/yaml.v2"
 )
 
 // SecurityType is the enum type of available security modes
@@ -18,9 +17,9 @@ type SecurityType string
 const (
 	// TypeInsecure is the insecure security mode and it is the default value
 	TypeInsecure SecurityType = "insecure"
-	// TypeTls is the TLS security mode, which requires caller to provide
+	// TypeTLS is the TLS security mode, which requires caller to provide
 	// credentials to connect to peer
-	TypeTls = "tls"
+	TypeTLS = "tls"
 )
 
 // The environment variable name of getting the server configs
@@ -28,14 +27,14 @@ const grpcdebugServerConfigEnvName = "GRPCDEBUG_CONFIG"
 
 // ServerConfig is the configuration for how to connect to a target
 type ServerConfig struct {
-	RealAddress        string
-	Security           SecurityType
-	CredentialFile     string
-	ServerNameOverride string
+	RealAddress        string       `yaml:"real_address"`
+	Security           SecurityType `yaml:"security"`
+	CredentialFile     string       `yaml:"credential_file"`
+	ServerNameOverride string       `yaml:"server_name_override"`
 }
 
 type grpcdebugConfig struct {
-	Servers map[string]ServerConfig
+	Servers map[string]ServerConfig `yaml:"servers"`
 }
 
 func loadServerConfigsFromFile(path string) map[string]ServerConfig {
@@ -48,7 +47,7 @@ func loadServerConfigsFromFile(path string) map[string]ServerConfig {
 		panic(err)
 	}
 	var config grpcdebugConfig
-	err = yaml.Unmarshal(bytes, config)
+	err = yaml.Unmarshal(bytes, &config)
 	if err != nil {
 		panic(err)
 	}

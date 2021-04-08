@@ -55,6 +55,7 @@ Use "grpcdebug <target address>  [command] --help" for more information about a 
       - [Usage 5: Inspect a Subchannel](#usage-5-inspect-a-subchannel)
       - [Usage 6: Inspect a Socket](#usage-6-inspect-a-socket)
       - [Usage 7: Inspect a Server](#usage-7-inspect-a-server)
+      - [Usage 8: Pagination](#usage-8-pagination)
     - [Debug xDS](#debug-xds)
       - [Usage 1: xDS Resources Overview](#usage-1-xds-resources-overview)
       - [Usage 2: Dump xDS Configs](#usage-2-dump-xds-configs)
@@ -127,12 +128,13 @@ Alternatively, like OpenSSH clients, you can specify the security settings in a
 `grpcdebug_config.yaml` file. grpcdebug CLI will find matching connection config and
 then use it to connect.
 
-```
-Server <Matching Pattern>
-  RealAddress        <Real Target Address>
-  Security           <Security Mode>
-  CredentialFile     <Path to Credential File>
-  ServerNameOverride <Overriding Server Name>
+```yaml
+servers:
+  "pattern string":
+    real_address: string
+    security: insecure/tls
+    credential_file: string
+    server_name_override: string
 ```
 
 Here is an example config file
@@ -181,16 +183,16 @@ To simply fetch the overall health status:
 
 ```shell
 grpcdebug localhost:50051 health
-# SERVING
+# <Overall>:  SERVING
 # or
-# NOT_SERVING
+# <Overall>:  NOT_SERVING
 ```
 
 Or fetch individual service's health status:
 
 ```shell
-grpcdebug localhost:50051 health "" helloworld.Greeter
-# :                     SERVING
+grpcdebug localhost:50051 health helloworld.Greeter
+# <Overall>:            SERVING
 # helloworld.Greeter:   SERVING
 ```
 
@@ -318,6 +320,22 @@ grpcdebug localhost:50051 channelz server 1
 # Socket ID   Local->Remote          Streams(Started/Succeeded/Failed)   Messages(Sent/Received)
 # 10          ::1:10001->::1:47436   5250/5250/0                         4647/5250
 ```
+
+#### Usage 8: Pagination
+
+In production, there may be thousands of clients/servers/sockets. It would be very noisy to print all of them at once, so Channelz supports pagination through `start_id` and `max_results`
+
+```shell
+grpcdebug localhost:50051 channelz servers --start_id=0 --max_results=1
+# Server ID   Listen Addresses   Calls(Started/Succeeded/Failed)   Last Call Started
+# 1           [:::10001]         2852/2530/322                     now
+grpcdebug localhost:50051 channelz servers --start_id=2 --max_results=2
+# Server ID   Listen Addresses   Calls(Started/Succeeded/Failed)   Last Call Started
+# 2           [:::50051]         29/28/0                           now
+# 3           [:::50052]         4/4/0                             26 seconds ago
+```
+
+It works similarly for printing channels via `channelz channels` and printing server sockets via `channelz server`.
 
 ### Debug xDS
 

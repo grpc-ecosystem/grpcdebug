@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
-	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
 
 	adminpb "github.com/envoyproxy/go-control-plane/envoy/admin/v3"
 	clusterpb "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
@@ -20,7 +19,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func printJSON(m proto.Message) error {
+var xdsTypeFlag string
+
+func printProtoBufMessageAsJSON(m proto.Message) error {
 	option := protojson.MarshalOptions{
 		Multiline:      true,
 		Indent:         "  ",
@@ -51,11 +52,9 @@ func priorityPerXdsConfig(x *csdspb.PerXdsConfig) int {
 }
 
 func sortPerXdsConfigs(clientStatus *csdspb.ClientStatusResponse) {
-	var xdsConfigs []*csdspb.PerXdsConfig = clientStatus.Config[0].XdsConfig
-	sort.Slice(xdsConfigs, func(i, j int) bool {
-		return priorityPerXdsConfig(xdsConfigs[i]) < priorityPerXdsConfig(xdsConfigs[j])
+	sort.Slice(clientStatus.Config[0].XdsConfig, func(i, j int) bool {
+		return priorityPerXdsConfig(clientStatus.Config[0].XdsConfig[i]) < priorityPerXdsConfig(clientStatus.Config[0].XdsConfig[j])
 	})
-	clientStatus.Config[0].XdsConfig = xdsConfigs
 }
 
 func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
@@ -63,42 +62,62 @@ func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 	if len(clientStatus.Config) != 1 {
 		return fmt.Errorf("Unexpected number of ClientConfig %v", len(clientStatus.Config))
 	}
-	if len(args) == 0 {
+	if xdsTypeFlag == "" {
+		// No filters, just print the whole thing
 		sortPerXdsConfigs(clientStatus)
-		return printJSON(clientStatus)
+		return printProtoBufMessageAsJSON(clientStatus)
+	}
+	// Parse flags
+	wantXdsTypes := strings.Split(xdsTypeFlag, ",")
+	var wantLDS, wantRDS, wantCDS, wantEDS bool
+	for _, wantXdsType := range wantXdsTypes {
+		switch strings.ToLower(wantXdsType) {
+		case "lds":
+			wantLDS = true
+		case "rds":
+			wantRDS = true
+		case "cds":
+			wantCDS = true
+		case "eds":
+			wantEDS = true
+		}
 	}
 	// Filter the CSDS output
-	var demand string
-	demand = strings.ToLower(args[0])
 	for _, xdsConfig := range clientStatus.Config[0].XdsConfig {
+		var printSubject proto.Message
 		switch xdsConfig.PerXdsConfig.(type) {
 		case *csdspb.PerXdsConfig_ListenerConfig:
-			if demand == "lds" {
-				return printJSON(xdsConfig.GetListenerConfig())
+			if wantLDS {
+				printSubject = xdsConfig.GetListenerConfig()
 			}
 		case *csdspb.PerXdsConfig_RouteConfig:
-			if demand == "rds" {
-				return printJSON(xdsConfig.GetRouteConfig())
+			if wantRDS {
+				printSubject = xdsConfig.GetRouteConfig()
 			}
 		case *csdspb.PerXdsConfig_ClusterConfig:
-			if demand == "cds" {
-				return printJSON(xdsConfig.GetClusterConfig())
+			if wantCDS {
+				printSubject = xdsConfig.GetClusterConfig()
 			}
 		case *csdspb.PerXdsConfig_EndpointConfig:
-			if demand == "eds" {
-				return printJSON(xdsConfig.GetEndpointConfig())
+			if wantEDS {
+				printSubject = xdsConfig.GetEndpointConfig()
+			}
+		}
+		if printSubject != nil {
+			err := printProtoBufMessageAsJSON(printSubject)
+			if err != nil {
+				return fmt.Errorf("Failed to print xDS config: %v", err)
 			}
 		}
 	}
-	verbose.Debugf("Failed to find xDS config with type %s", args[0])
 	return nil
 }
 
 var xdsConfigCmd = &cobra.Command{
-	Use:   "config [lds|rds|cds|eds]",
+	Use:   "config",
 	Short: "Dump the operating xDS configs.",
 	RunE:  xdsConfigCommandRunWithError,
-	Args:  cobra.MaximumNArgs(1),
+	Args:  cobra.NoArgs,
 }
 
 type xdsResourceStatusEntry struct {
@@ -209,6 +228,7 @@ var xdsCmd = &cobra.Command{
 }
 
 func init() {
+	xdsConfigCmd.Flags().StringVarP(&xdsTypeFlag, "type", "y", "", "Filters the wanted type of xDS config to print (separated by comma) (available types: LDS/RDS/CDS/EDS) (by default, print all)")
 	xdsCmd.AddCommand(xdsConfigCmd)
 	xdsCmd.AddCommand(xdsStatusCmd)
 	rootCmd.AddCommand(xdsCmd)

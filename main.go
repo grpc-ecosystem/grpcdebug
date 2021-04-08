@@ -3,7 +3,9 @@ package main
 import (
 	cmd "github.com/grpc-ecosystem/grpcdebug/cmd"
 
-	// Preload as much proto descriptors as possible, so the released binaries can
+	// To parse Any protos, ProtoBuf requires the descriptors of the given message
+	// type to present in its descriptor pool. Otherwise, it will fail. Here we
+	// preload as much proto descriptors as possible, so the released binaries can
 	// have better forward compatibility.
 	_ "github.com/envoyproxy/go-control-plane/envoy/admin/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/accesslog/v3"
