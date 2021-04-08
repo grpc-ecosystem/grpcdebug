@@ -234,12 +234,9 @@ grpcdebug localhost:50051 channelz servers
 
 #### Usage 4: Inspect a Channel
 
-You can identify a channel via the Channel ID or a URL matching its target (if
-multiple hit, return first match).
+You can identify a channel via the Channel ID.
 
 ```shell
-grpcdebug localhost:50051 channelz channel localhost:10001
-# <Same output as below>
 grpcdebug localhost:50051 channelz channel 7
 # Channel ID:        7
 # Target:            localhost:10001
