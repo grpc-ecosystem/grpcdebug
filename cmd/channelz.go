@@ -33,8 +33,7 @@ func prettyTime(ts *timestamppb.Timestamp) string {
 
 func prettyAddress(addr *zpb.Address) string {
 	if ipPort := addr.GetTcpipAddress(); ipPort != nil {
-		var ip net.IP = net.IP(ipPort.IpAddress)
-		var address = net.TCPAddr{IP: ip, Port: int(ipPort.Port)}
+		address := net.TCPAddr{IP: net.IP(ipPort.IpAddress), Port: int(ipPort.Port)}
 		return address.String()
 	}
 	panic(fmt.Sprintf("Address type not supported for %s", addr))

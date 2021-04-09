@@ -383,7 +383,7 @@ The dumped xDS config can be quite verbose, if I only interested in certain xDS
 type, grpcdebug can only print the selected section.
 
 ```shell
-grpcdebug localhost:50051 xds config eds
+grpcdebug localhost:50051 xds config --type=eds
 # {
 #   "dynamicEndpointConfigs":  [
 #     {
