@@ -63,7 +63,7 @@ func initConfig() {
 		c.ServerNameOverride = serverNameOverride
 	}
 	if security == "tls" {
-		c.Security = config.TypeTls
+		c.Security = config.TypeTLS
 		if c.CredentialFile == "" {
 			rootCmd.Usage()
 			log.Fatalf("Please specify credential file under [tls] mode.")

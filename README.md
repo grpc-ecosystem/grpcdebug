@@ -1,5 +1,6 @@
 # grpcdebug
-[![Go Report Card](https://goreportcard.com/badge/github.com/grpc-ecosystem/grpcdebug)](https://goreportcard.com/report/github.com/grpc-ecosystem/grpcdebug)
+[![Go Report
+Card](https://goreportcard.com/badge/github.com/grpc-ecosystem/grpcdebug)](https://goreportcard.com/report/github.com/grpc-ecosystem/grpcdebug)
 
 grpcdebug is a command line interface focusing on simplifying the debugging
 process of gRPC applications. grpcdebug fetches the internal states of the gRPC
@@ -54,6 +55,7 @@ Use "grpcdebug <target address>  [command] --help" for more information about a 
       - [Usage 5: Inspect a Subchannel](#usage-5-inspect-a-subchannel)
       - [Usage 6: Inspect a Socket](#usage-6-inspect-a-socket)
       - [Usage 7: Inspect a Server](#usage-7-inspect-a-server)
+      - [Usage 8: Pagination](#usage-8-pagination)
     - [Debug xDS](#debug-xds)
       - [Usage 1: xDS Resources Overview](#usage-1-xds-resources-overview)
       - [Usage 2: Dump xDS Configs](#usage-2-dump-xds-configs)
@@ -65,17 +67,29 @@ Use "grpcdebug <target address>  [command] --help" for more information about a 
 
 ## Installation
 
-Minimum Golang Version 1.12. Official Golang install guide: https://golang.org/doc/install.
+Minimum Golang Version 1.12. Official Golang install guide:
+https://golang.org/doc/install.
+
+You can install the `grpcdebug` tool using command:
 
 ```shell
-go get github.com/grpc-ecosystem/grpcdebug
+go install -v github.com/grpc-ecosystem/grpcdebug@latest
+```
+
+Don't forget to add Golang binaries to your `PATH`:
+
+```shell
+export PATH=$PATH:$(go env GOPATH)/bin
 ```
 
 ## Quick Start
 
-If certain commands if confusing, please try to use `-h` to get more context. Suggestions and ideas are welcome, please post them to https://github.com/grpc-ecosystem/grpcdebug/issues!
+If certain commands if confusing, please try to use `-h` to get more context.
+Suggestions and ideas are welcome, please post them to
+https://github.com/grpc-ecosystem/grpcdebug/issues!
 
-If you haven't got your gRPC application instrumented, feel free to try out the mocking `testserver` which implemented admin services.
+If you haven't got your gRPC application instrumented, feel free to try out the
+mocking `testserver` which implemented admin services.
 
 ```shell
 cd internal/testing/testserver
@@ -101,7 +115,8 @@ grpcdebug localhost:50051 channelz channels
 
 #### TLS Connection - Flags
 
-One way to establish a TLS connection with grpcdebug is specifying the credentials via command line flags. For example:
+One way to establish a TLS connection with grpcdebug is specifying the
+credentials via command line flags. For example:
 
 ```shell
 grpcdebug localhost:50052 --security=tls --credential_file=./internal/testing/ca.pem --server_name_override="*.test.youtube.com" channelz channels
@@ -110,39 +125,48 @@ grpcdebug localhost:50052 --security=tls --credential_file=./internal/testing/ca
 #### Server Connection Config
 
 Alternatively, like OpenSSH clients, you can specify the security settings in a
-`grpcdebug_config` file. grpcdebug CLI will find matching connection config and
+`grpcdebug_config.yaml` file. grpcdebug CLI will find matching connection config and
 then use it to connect.
 
-```
-Server <Matching Pattern>
-  RealAddress        <Real Target Address>
-  Security           <Security Mode>
-  CredentialFile     <Path to Credential File>
-  ServerNameOverride <Overriding Server Name>
+```yaml
+servers:
+  "pattern string":
+    real_address: string
+    security: insecure/tls
+    credential_file: string
+    server_name_override: string
 ```
 
-Here is an example config file [grpcdebug_config](https://github.com/grpc-ecosystem/grpcdebug/blob/main/internal/testing/grpcdebug_config).
+Here is an example config file
+[grpcdebug_config.yaml](internal/testing/grpcdebug_config.yaml).
 
 Each server config can have following settings:
 
-* Pattern: the string right after `Server ` which dictates if this rule should apply;
-* RealAddress: if present, override the given target address, which allows giving nicknames/aliases to frequently used addresses;
+* Pattern: the string right after `Server ` which dictates if this rule should
+  apply;
+* RealAddress: if present, override the given target address, which allows
+  giving nicknames/aliases to frequently used addresses;
 * Security: allows `insecure` or `tls`, expecting more in future;
 * CredentialFile: path to the credential file;
-* ServerNameOverride: override the hostname, useful for local reproductions to comply the certificates' common name requirement.
+* ServerNameOverride: override the hostname, useful for local reproductions to
+  comply the certificates' common name requirement.
 
 grpcdebug searches the config file in following order:
 
-1. Check if environment variable `GRPCDEBUG_CONFIG` is set, if so, load from the given path;
-2. Try to load the `grpcdebug_config` file in current working directory;
-3. Try to load the `grpcdebug_config` file in the user config directory (Linux: `$HOME/.config`, macOS: `$HOME/Library/Application Support`, Windows: `%AppData%`, see [`os.UserConfigDir()`](https://golang.org/pkg/os/#UserConfigDir)).
+1. Check if environment variable `GRPCDEBUG_CONFIG` is set, if so, load from the
+   given path;
+2. Try to load the `grpcdebug_config.yaml` file in current working directory;
+3. Try to load the `grpcdebug_config.yaml` file in the user config directory (Linux:
+   `$HOME/.config`, macOS: `$HOME/Library/Application Support`, Windows:
+   `%AppData%`, see
+   [`os.UserConfigDir()`](https://golang.org/pkg/os/#UserConfigDir)).
 
 For example, we can connect to our mock test server's secure admin port via:
 
 ```shell
-GRPCDEBUG_CONFIG=internal/testing/grpcdebug_config grpcdebug localhost:50052 channelz channels
+GRPCDEBUG_CONFIG=internal/testing/grpcdebug_config.yaml grpcdebug localhost:50052 channelz channels
 # Or
-GRPCDEBUG_CONFIG=internal/testing/grpcdebug_config grpcdebug prod channelz channels
+GRPCDEBUG_CONFIG=internal/testing/grpcdebug_config.yaml grpcdebug prod channelz channels
 ```
 
 ### Health
@@ -152,30 +176,31 @@ application (see
 [health.proto](https://github.com/grpc/grpc/blob/master/src/proto/grpc/health/v1/health.proto)).
 gRPC's health checking works at service-level, meaning services registered on
 the same gRPC server may have different health status. The health status of
-service "" is used to represent the overall health status of the gRPC
+service `""` is used to represent the overall health status of the gRPC
 application.
 
 To simply fetch the overall health status:
 
 ```shell
 grpcdebug localhost:50051 health
-# SERVING
+# <Overall>:  SERVING
 # or
-# NOT_SERVING
+# <Overall>:  NOT_SERVING
 ```
 
 Or fetch individual service's health status:
 
 ```shell
-grpcdebug localhost:50051 health "" helloworld.Greeter
-# :                     SERVING
+grpcdebug localhost:50051 health helloworld.Greeter
+# <Overall>:            SERVING
 # helloworld.Greeter:   SERVING
 ```
 
 ### Channelz
 
-Channelz is a channel tracing library that allows applications to remotely query
-gRPC internal debug information. Also, Channelz has a web interface (see
+[Channelz](https://github.com/grpc/proposal/blob/master/A14-channelz.md) is a
+channel tracing library that allows applications to remotely query gRPC internal
+debug information. Also, Channelz has a web interface (see
 [gdebug](https://github.com/grpc/grpc-experiments/tree/master/gdebug)).
 grpcdebug is able to fetch information and present it in a more readable way.
 
@@ -209,10 +234,9 @@ grpcdebug localhost:50051 channelz servers
 
 #### Usage 4: Inspect a Channel
 
-You can identify a channel via the Channel ID or a URL matching its target (if multiple hit, return first match).
+You can identify a channel via the Channel ID.
 
 ```shell
-grpcdebug localhost:50051 channelz channel localhost:10001
 grpcdebug localhost:50051 channelz channel 7
 # Channel ID:        7
 # Target:            localhost:10001
@@ -294,6 +318,22 @@ grpcdebug localhost:50051 channelz server 1
 # 10          ::1:10001->::1:47436   5250/5250/0                         4647/5250
 ```
 
+#### Usage 8: Pagination
+
+In production, there may be thousands of clients/servers/sockets. It would be very noisy to print all of them at once, so Channelz supports pagination through `start_id` and `max_results`
+
+```shell
+grpcdebug localhost:50051 channelz servers --start_id=0 --max_results=1
+# Server ID   Listen Addresses   Calls(Started/Succeeded/Failed)   Last Call Started
+# 1           [:::10001]         2852/2530/322                     now
+grpcdebug localhost:50051 channelz servers --start_id=2 --max_results=2
+# Server ID   Listen Addresses   Calls(Started/Succeeded/Failed)   Last Call Started
+# 2           [:::50051]         29/28/0                           now
+# 3           [:::50052]         4/4/0                             26 seconds ago
+```
+
+It works similarly for printing channels via `channelz channels` and printing server sockets via `channelz server`.
+
 ### Debug xDS
 
 [xDS](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/operations/dynamic_configuration)
@@ -302,7 +342,10 @@ created by Envoy, used by Istio, Traffic Director, and gRPC.
 
 #### Usage 1: xDS Resources Overview
 
-The xDS resources status might be REQUESTED/DOES_NOT_EXIST/ACKED/NACKED (see [config_dump.proto](https://github.com/envoyproxy/envoy/blob/b0ce15c96cebd89cf391869e49017325cd7faaa8/api/envoy/admin/v3/config_dump.proto#L22)). This view is intended for a quick scan if a configuration is propagated from the service mesh control plane.
+The xDS resources status might be `REQUESTED`/`DOES_NOT_EXIST`/`ACKED`/`NACKED` (see
+[config_dump.proto](https://github.com/envoyproxy/envoy/blob/b0ce15c96cebd89cf391869e49017325cd7faaa8/api/envoy/admin/v3/config_dump.proto#L22)).
+This view is intended for a quick scan if a configuration is propagated from the
+service mesh control plane.
 
 ```shell
 grpcdebug localhost:50051 xds status
@@ -331,14 +374,16 @@ grpcdebug localhost:50051 xds config
 # ...
 ```
 
-For an example config dump, see [csds_config_dump.json](https://github.com/grpc-ecosystem/grpcdebug/blob/main/internal/testing/testserver/csds_config_dump.json).
+For an example config dump, see
+[csds_config_dump.json](internal/testing/testserver/csds_config_dump.json).
 
 #### Usage 3: Filter xDS Configs
 
-The dumped xDS config can be quite verbose, if I only interested in certain xDS type, grpcdebug can only print the selected section.
+The dumped xDS config can be quite verbose, if I only interested in certain xDS
+type, grpcdebug can only print the selected section.
 
 ```shell
-grpcdebug localhost:50051 xds config eds
+grpcdebug localhost:50051 xds config --type=eds
 # {
 #   "dynamicEndpointConfigs":  [
 #     {
@@ -379,37 +424,75 @@ grpcdebug localhost:50051 xds config eds
 
 ### gRPC Java:
 
-```java
-server = ServerBuilder.forPort(50051)
-        .useTransportSecurity(certChainFile, privateKeyFile)
-        .addServices(AdminInterface.getStandardServices())
-        .build()
-        .start();
-server.awaitTermination();
+```diff
+--- a/examples/src/main/java/io/grpc/examples/helloworld/HelloWorldServer.java
++++ b/examples/src/main/java/io/grpc/examples/helloworld/HelloWorldServer.java
+@@ -18,6 +18,7 @@ package io.grpc.examples.helloworld;
+
+ import io.grpc.Server;
+ import io.grpc.ServerBuilder;
++import io.grpc.services.AdminInterface;
+ import io.grpc.stub.StreamObserver;
+ import java.io.IOException;
+ import java.util.concurrent.TimeUnit;
+@@ -36,6 +37,7 @@ public class HelloWorldServer {
+     int port = 50051;
+     server = ServerBuilder.forPort(port)
+         .addService(new GreeterImpl())
++        .addServices(AdminInterface.getStandardServices())
+         .build()
+         .start();
+     logger.info("Server started, listening on " + port);
 ```
 
 
 ### gRPC Go:
 
-```golang
-lis, err := net.Listen("tcp", ":50051")
-if err != nil {
-        log.Fatalf("failed to listen: %v", err)
-}
-defer lis.Close()
-grpcServer := grpc.NewServer(...opts)
-adminServices.RegisterAdminServicesToServer(grpcServer)
-if err := grpcServer.Serve(lis); err != nil {
-        log.Fatalf("failed to serve: %v", err)
-}
+```diff
+--- a/examples/helloworld/greeter_server/main.go
++++ b/examples/helloworld/greeter_server/main.go
+@@ -27,6 +27,7 @@ import (
+        "net"
+
+        "google.golang.org/grpc"
++       "google.golang.org/grpc/admin"
+        pb "google.golang.org/grpc/examples/helloworld/helloworld"
+ )
+
+@@ -51,6 +52,11 @@ func main() {
+                log.Fatalf("failed to listen: %v", err)
+        }
+        s := grpc.NewServer()
++       cleanup, err := admin.Register(s)
++       if err != nil {
++               log.Fatalf("failed to register admin: %v", err)
++       }
++       defer cleanup()
+        pb.RegisterGreeterServer(s, &server{})
+        if err := s.Serve(lis); err != nil {
+                log.Fatalf("failed to serve: %v", err)
 ```
 
 
 ### gRPC C++:
 
-```cpp
-grpc::ServerBuilder builder;
-grpc::AddAdminServices(&builder);
-builder.AddListeningPort(":50051", grpc::ServerCredentials(...));
-std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+```diff
+--- a/examples/cpp/helloworld/greeter_server.cc
++++ b/examples/cpp/helloworld/greeter_server.cc
+@@ -20,6 +20,7 @@
+ #include <memory>
+ #include <string>
+
++#include <grpcpp/ext/admin_services.h>
+ #include <grpcpp/ext/proto_server_reflection_plugin.h>
+ #include <grpcpp/grpcpp.h>
+ #include <grpcpp/health_check_service_interface.h>
+@@ -60,6 +61,7 @@ void RunServer() {
+   // Register "service" as the instance through which we'll communicate with
+   // clients. In this case it corresponds to an *synchronous* service.
+   builder.RegisterService(&service);
++  grpc::AddAdminServices(&builder);
+   // Finally assemble the server.
+   std::unique_ptr<Server> server(builder.BuildAndStart());
+   std::cout << "Server listening on " << server_address << std::endl;
 ```

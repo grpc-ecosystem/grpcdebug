@@ -6,17 +6,18 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
-
 	"github.com/dustin/go-humanize"
 	"github.com/golang/protobuf/ptypes"
 	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
 	"github.com/spf13/cobra"
 	zpb "google.golang.org/grpc/channelz/grpc_channelz_v1"
 )
 
 var (
 	jsonOutputFlag bool
+	startIDFlag    int64
+	maxResultsFlag int64
 )
 
 func prettyTime(ts *timestamppb.Timestamp) string {
@@ -30,18 +31,10 @@ func prettyTime(ts *timestamppb.Timestamp) string {
 	return humanize.Time(t)
 }
 
-func prettySeverity(s zpb.ChannelTraceEvent_Severity) string {
-	return zpb.ChannelTraceEvent_Severity_name[int32(s)]
-}
-
-func prettyConnectivityState(state zpb.ChannelConnectivityState_State) string {
-	return zpb.ChannelConnectivityState_State_name[int32(state)]
-}
-
 func prettyAddress(addr *zpb.Address) string {
 	if ipPort := addr.GetTcpipAddress(); ipPort != nil {
-		var ip net.IP = net.IP(ipPort.IpAddress)
-		return fmt.Sprintf("%v:%v", ip, ipPort.Port)
+		address := net.TCPAddr{IP: net.IP(ipPort.IpAddress), Port: int(ipPort.Port)}
+		return address.String()
 	}
 	panic(fmt.Sprintf("Address type not supported for %s", addr))
 }
@@ -58,7 +51,7 @@ func printChannelTraceEvents(events []*zpb.ChannelTraceEvent) {
 		}
 		fmt.Fprintf(
 			w, "%v\t%v\t%v\t%v\t\n",
-			prettySeverity(event.Severity),
+			event.Severity,
 			prettyTime(event.Timestamp),
 			childRef,
 			event.Description,
@@ -84,7 +77,7 @@ func printSockets(sockets []*zpb.Socket) {
 	w.Flush()
 }
 
-func printAsJson(data interface{}) error {
+func printObjectAsJSON(data interface{}) error {
 	json, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
@@ -94,10 +87,10 @@ func printAsJson(data interface{}) error {
 }
 
 func channelzChannelsCommandRunWithError(cmd *cobra.Command, args []string) error {
-	var channels = transport.Channels()
+	var channels = transport.Channels(startIDFlag, maxResultsFlag)
 	// Print as JSON
 	if jsonOutputFlag {
-		return printAsJson(channels)
+		return printObjectAsJSON(channels)
 	}
 	// Print as table
 	fmt.Fprintln(w, "Channel ID\tTarget\tState\tCalls(Started/Succeeded/Failed)\tCreated Time\t")
@@ -106,7 +99,7 @@ func channelzChannelsCommandRunWithError(cmd *cobra.Command, args []string) erro
 			w, "%v\t%v\t%v\t%v/%v/%v\t%v\t\n",
 			channel.Ref.ChannelId,
 			channel.Data.Target,
-			prettyConnectivityState(channel.Data.State.State),
+			channel.Data.State.State,
 			channel.Data.CallsStarted,
 			channel.Data.CallsSucceeded,
 			channel.Data.CallsFailed,
@@ -125,40 +118,20 @@ var channelzChannelsCmd = &cobra.Command{
 }
 
 func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error {
-	var idOrTarget string = args[0]
-	var selected *zpb.Channel
-	var channels []*zpb.Channel = transport.Channels()
-	if id, err := strconv.ParseInt(idOrTarget, 10, 64); err == nil {
-		// Find by ID
-		for _, channel := range channels {
-			if channel.Ref.ChannelId == id {
-				selected = channel
-				break
-			}
-		}
-	} else {
-		// Find by matching target
-		for _, channel := range channels {
-			if channel.Data.Target == idOrTarget {
-				if selected != nil {
-					return fmt.Errorf("More than one channel is connecting to target %v", idOrTarget)
-				}
-				selected = channel
-			}
-		}
+	id, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Failed to parse ID=%v: %v", args[0], err)
 	}
-	if selected == nil {
-		return fmt.Errorf("Cannot find channel with ID or target equal to %v", idOrTarget)
-	}
+	selected := transport.Channel(id)
 	// Print as JSON
 	if jsonOutputFlag {
-		return printAsJson(selected)
+		return printObjectAsJSON(selected)
 	}
 	// Print as table
 	// Print Channel information
 	fmt.Fprintf(w, "Channel ID:\t%v\t\n", selected.Ref.ChannelId)
 	fmt.Fprintf(w, "Target:\t%v\t\n", selected.Data.Target)
-	fmt.Fprintf(w, "State:\t%v\t\n", prettyConnectivityState(selected.Data.State.State))
+	fmt.Fprintf(w, "State:\t%v\t\n", selected.Data.State.State)
 	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.Data.CallsStarted)
 	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.Data.CallsSucceeded)
 	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.Data.CallsFailed)
@@ -174,7 +147,7 @@ func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error
 				w, "%v\t%v\t%v\t%v/%v/%v\t%v\t\n",
 				subchannel.Ref.SubchannelId,
 				subchannel.Data.Target,
-				prettyConnectivityState(subchannel.Data.State.State),
+				subchannel.Data.State.State,
 				subchannel.Data.CallsStarted,
 				subchannel.Data.CallsSucceeded,
 				subchannel.Data.CallsFailed,
@@ -199,38 +172,20 @@ var channelzChannelCmd = &cobra.Command{
 }
 
 func channelzSubchannelCommandRunWithError(cmd *cobra.Command, args []string) error {
-	var idOrTarget string = args[0]
-	var selected *zpb.Subchannel
-	var subchannels []*zpb.Subchannel = transport.Subchannels()
-	if id, err := strconv.ParseInt(idOrTarget, 10, 64); err == nil {
-		for _, subchannel := range subchannels {
-			if subchannel.Ref.SubchannelId == id {
-				selected = subchannel
-				break
-			}
-		}
-	} else {
-		for _, subchannel := range subchannels {
-			if subchannel.Data.Target == idOrTarget {
-				if selected != nil {
-					return fmt.Errorf("More than one subchannel is connecting to target %v", idOrTarget)
-				}
-				selected = subchannel
-			}
-		}
+	id, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("Failed to parse ID=%v: %v", args[0], err)
 	}
-	if selected == nil {
-		return fmt.Errorf("Cannot find subchannel with ID or target equal to %v", idOrTarget)
-	}
+	selected := transport.Subchannel(id)
 	// Print as JSON
 	if jsonOutputFlag {
-		return printAsJson(selected)
+		return printObjectAsJSON(selected)
 	}
 	// Print as table
 	// Print Subchannel information
 	fmt.Fprintf(w, "Subchannel ID:\t%v\t\n", selected.Ref.SubchannelId)
 	fmt.Fprintf(w, "Target:\t%v\t\n", selected.Data.Target)
-	fmt.Fprintf(w, "State:\t%v\t\n", prettyConnectivityState(selected.Data.State.State))
+	fmt.Fprintf(w, "State:\t%v\t\n", selected.Data.State.State)
 	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.Data.CallsStarted)
 	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.Data.CallsSucceeded)
 	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.Data.CallsFailed)
@@ -256,17 +211,14 @@ var channelzSubchannelCmd = &cobra.Command{
 }
 
 func channelzSocketCommandRunWithError(cmd *cobra.Command, args []string) error {
-	socketId, err := strconv.ParseInt(args[0], 10, 64)
+	socketID, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
-		return fmt.Errorf("Invalid socket ID %v", socketId)
+		return fmt.Errorf("Invalid socket ID %v", socketID)
 	}
-	selected := transport.Socket(socketId)
-	if selected == nil {
-		return fmt.Errorf("Cannot find socket with ID %v", socketId)
-	}
+	selected := transport.Socket(socketID)
 	// Print as JSON
 	if jsonOutputFlag {
-		return printAsJson(selected)
+		return printObjectAsJSON(selected)
 	}
 	// Print as table
 	// Print Socket information
@@ -334,10 +286,10 @@ var channelzSocketCmd = &cobra.Command{
 }
 
 func channelzServersCommandRunWithError(cmd *cobra.Command, args []string) error {
-	var servers = transport.Servers()
+	var servers = transport.Servers(startIDFlag, maxResultsFlag)
 	// Print as JSON
 	if jsonOutputFlag {
-		return printAsJson(servers)
+		return printObjectAsJSON(servers)
 	}
 	// Print as table
 	fmt.Fprintln(w, "Server ID\tListen Addresses\tCalls(Started/Succeeded/Failed)\tLast Call Started\t")
@@ -369,24 +321,14 @@ var channelzServersCmd = &cobra.Command{
 }
 
 func channelzServerCommandRunWithError(cmd *cobra.Command, args []string) error {
-	var servers = transport.Servers()
-	var selected *zpb.Server
-	serverId, err := strconv.ParseInt(args[0], 10, 64)
+	serverID, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
-		return fmt.Errorf("Invalid server ID %v", serverId)
+		return fmt.Errorf("Invalid server ID %v", serverID)
 	}
-	for _, server := range servers {
-		if server.Ref.ServerId == serverId {
-			selected = server
-			break
-		}
-	}
-	if selected == nil {
-		return fmt.Errorf("Cannot find server with ID %v", serverId)
-	}
+	selected := transport.Server(serverID)
 	// Print as JSON
 	if jsonOutputFlag {
-		return printAsJson(servers)
+		return printObjectAsJSON(selected)
 	}
 	// Print as table
 	var listenAddresses []string
@@ -401,7 +343,7 @@ func channelzServerCommandRunWithError(cmd *cobra.Command, args []string) error 
 	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.Data.CallsFailed)
 	fmt.Fprintf(w, "Last Call Started:\t%v\t\n", prettyTime(selected.Data.LastCallStartedTimestamp))
 	w.Flush()
-	if sockets := transport.ServerSocket(selected.Ref.ServerId); len(sockets) > 0 {
+	if sockets := transport.ServerSocket(selected.Ref.ServerId, startIDFlag, maxResultsFlag); len(sockets) > 0 {
 		// Print socket list
 		fmt.Println("---")
 		printSockets(sockets)
@@ -424,6 +366,12 @@ var channelzCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(channelzCmd)
+	channelzChannelsCmd.Flags().Int64VarP(&maxResultsFlag, "max_results", "m", 100, "The maximum number of output channels")
+	channelzChannelsCmd.Flags().Int64VarP(&startIDFlag, "start_id", "s", 0, "The start channel ID")
+	channelzServerCmd.Flags().Int64VarP(&maxResultsFlag, "max_results", "m", 100, "The maximum number of the output sockets")
+	channelzServerCmd.Flags().Int64VarP(&startIDFlag, "start_id", "s", 0, "The start server socket ID")
+	channelzServersCmd.Flags().Int64VarP(&maxResultsFlag, "max_results", "m", 100, "The maximum number of output servers")
+	channelzServersCmd.Flags().Int64VarP(&startIDFlag, "start_id", "s", 0, "The start server ID")
 	channelzCmd.PersistentFlags().BoolVarP(&jsonOutputFlag, "json", "o", false, "Whether to print the result as JSON")
 	channelzCmd.AddCommand(channelzChannelCmd)
 	channelzCmd.AddCommand(channelzChannelsCmd)

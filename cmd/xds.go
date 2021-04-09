@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
@@ -18,12 +19,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func printJson(m proto.Message) error {
-	var option protojson.MarshalOptions
-	option.Multiline = true
-	option.Indent = "  "
-	option.UseProtoNames = false
-	option.UseEnumNumbers = false
+var xdsTypeFlag string
+
+func printProtoBufMessageAsJSON(m proto.Message) error {
+	option := protojson.MarshalOptions{
+		Multiline:      true,
+		Indent:         "  ",
+		UseProtoNames:  false,
+		UseEnumNumbers: false,
+	}
 	jsonbytes, err := option.Marshal(m)
 	if err != nil {
 		return err
@@ -32,60 +36,88 @@ func printJson(m proto.Message) error {
 	return nil
 }
 
-func sortPerXdsConfigs(clientStatus *csdspb.ClientStatusResponse) {
-	var xdsConfigs [4]*csdspb.PerXdsConfig
-	for _, xdsConfig := range clientStatus.Config[0].XdsConfig {
-		switch xdsConfig.PerXdsConfig.(type) {
-		case *csdspb.PerXdsConfig_ListenerConfig:
-			xdsConfigs[0] = xdsConfig
-		case *csdspb.PerXdsConfig_RouteConfig:
-			xdsConfigs[1] = xdsConfig
-		case *csdspb.PerXdsConfig_ClusterConfig:
-			xdsConfigs[2] = xdsConfig
-		case *csdspb.PerXdsConfig_EndpointConfig:
-			xdsConfigs[3] = xdsConfig
-		}
+func priorityPerXdsConfig(x *csdspb.PerXdsConfig) int {
+	switch x.PerXdsConfig.(type) {
+	case *csdspb.PerXdsConfig_ListenerConfig:
+		return 0
+	case *csdspb.PerXdsConfig_RouteConfig:
+		return 1
+	case *csdspb.PerXdsConfig_ClusterConfig:
+		return 2
+	case *csdspb.PerXdsConfig_EndpointConfig:
+		return 3
+	default:
+		return 4
 	}
-	clientStatus.Config[0].XdsConfig = xdsConfigs[:]
+}
+
+func sortPerXdsConfigs(clientStatus *csdspb.ClientStatusResponse) {
+	sort.Slice(clientStatus.Config[0].XdsConfig, func(i, j int) bool {
+		return priorityPerXdsConfig(clientStatus.Config[0].XdsConfig[i]) < priorityPerXdsConfig(clientStatus.Config[0].XdsConfig[j])
+	})
 }
 
 func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 	clientStatus := transport.FetchClientStatus()
-	if len(args) == 0 {
+	if len(clientStatus.Config) != 1 {
+		return fmt.Errorf("Unexpected number of ClientConfig %v", len(clientStatus.Config))
+	}
+	if xdsTypeFlag == "" {
+		// No filters, just print the whole thing
 		sortPerXdsConfigs(clientStatus)
-		return printJson(clientStatus)
+		return printProtoBufMessageAsJSON(clientStatus)
+	}
+	// Parse flags
+	wantXdsTypes := strings.Split(xdsTypeFlag, ",")
+	var wantLDS, wantRDS, wantCDS, wantEDS bool
+	for _, wantXdsType := range wantXdsTypes {
+		switch strings.ToLower(wantXdsType) {
+		case "lds":
+			wantLDS = true
+		case "rds":
+			wantRDS = true
+		case "cds":
+			wantCDS = true
+		case "eds":
+			wantEDS = true
+		}
 	}
 	// Filter the CSDS output
-	var demand string
-	demand = strings.ToLower(args[0])
 	for _, xdsConfig := range clientStatus.Config[0].XdsConfig {
+		var printSubject proto.Message
 		switch xdsConfig.PerXdsConfig.(type) {
 		case *csdspb.PerXdsConfig_ListenerConfig:
-			if demand == "lds" {
-				return printJson(xdsConfig.GetListenerConfig())
+			if wantLDS {
+				printSubject = xdsConfig.GetListenerConfig()
 			}
 		case *csdspb.PerXdsConfig_RouteConfig:
-			if demand == "rds" {
-				return printJson(xdsConfig.GetRouteConfig())
+			if wantRDS {
+				printSubject = xdsConfig.GetRouteConfig()
 			}
 		case *csdspb.PerXdsConfig_ClusterConfig:
-			if demand == "cds" {
-				return printJson(xdsConfig.GetClusterConfig())
+			if wantCDS {
+				printSubject = xdsConfig.GetClusterConfig()
 			}
 		case *csdspb.PerXdsConfig_EndpointConfig:
-			if demand == "eds" {
-				return printJson(xdsConfig.GetEndpointConfig())
+			if wantEDS {
+				printSubject = xdsConfig.GetEndpointConfig()
+			}
+		}
+		if printSubject != nil {
+			err := printProtoBufMessageAsJSON(printSubject)
+			if err != nil {
+				return fmt.Errorf("Failed to print xDS config: %v", err)
 			}
 		}
 	}
-	return fmt.Errorf("Failed to find xDS config with type %s", args[0])
+	return nil
 }
 
 var xdsConfigCmd = &cobra.Command{
-	Use:   "config [lds|rds|cds|eds]",
+	Use:   "config",
 	Short: "Dump the operating xDS configs.",
 	RunE:  xdsConfigCommandRunWithError,
-	Args:  cobra.MaximumNArgs(1),
+	Args:  cobra.NoArgs,
 }
 
 type xdsResourceStatusEntry struct {
@@ -96,15 +128,11 @@ type xdsResourceStatusEntry struct {
 	LastUpdated *timestamppb.Timestamp
 }
 
-func prettyClientResourceStatus(s adminpb.ClientResourceStatus) string {
-	return adminpb.ClientResourceStatus_name[int32(s)]
-}
-
 func printStatusEntry(entry *xdsResourceStatusEntry) {
 	fmt.Fprintf(
 		w, "%v\t%v\t%v\t%v\t%v\t\n",
 		entry.Name,
-		prettyClientResourceStatus(entry.Status),
+		entry.Status,
 		entry.Version,
 		entry.Type,
 		prettyTime(entry.LastUpdated),
@@ -120,7 +148,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 		switch xdsConfig.PerXdsConfig.(type) {
 		case *csdspb.PerXdsConfig_ListenerConfig:
 			for _, dynamicListener := range xdsConfig.GetListenerConfig().DynamicListeners {
-				var entry = xdsResourceStatusEntry{
+				entry := xdsResourceStatusEntry{
 					Name:   dynamicListener.Name,
 					Status: dynamicListener.ClientStatus,
 				}
@@ -133,7 +161,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 			}
 		case *csdspb.PerXdsConfig_RouteConfig:
 			for _, dynamicRouteConfig := range xdsConfig.GetRouteConfig().DynamicRouteConfigs {
-				var entry = xdsResourceStatusEntry{
+				entry := xdsResourceStatusEntry{
 					Status:      dynamicRouteConfig.ClientStatus,
 					Version:     dynamicRouteConfig.VersionInfo,
 					Type:        dynamicRouteConfig.RouteConfig.TypeUrl,
@@ -150,7 +178,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 			}
 		case *csdspb.PerXdsConfig_ClusterConfig:
 			for _, dynamicCluster := range xdsConfig.GetClusterConfig().DynamicActiveClusters {
-				var entry = xdsResourceStatusEntry{
+				entry := xdsResourceStatusEntry{
 					Status:      dynamicCluster.ClientStatus,
 					Version:     dynamicCluster.VersionInfo,
 					Type:        dynamicCluster.Cluster.TypeUrl,
@@ -167,7 +195,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 			}
 		case *csdspb.PerXdsConfig_EndpointConfig:
 			for _, dynamicEndpoint := range xdsConfig.GetEndpointConfig().GetDynamicEndpointConfigs() {
-				var entry = xdsResourceStatusEntry{
+				entry := xdsResourceStatusEntry{
 					Status:      dynamicEndpoint.ClientStatus,
 					Version:     dynamicEndpoint.VersionInfo,
 					Type:        dynamicEndpoint.EndpointConfig.TypeUrl,
@@ -200,6 +228,7 @@ var xdsCmd = &cobra.Command{
 }
 
 func init() {
+	xdsConfigCmd.Flags().StringVarP(&xdsTypeFlag, "type", "y", "", "Filters the wanted type of xDS config to print (separated by comma) (available types: LDS/RDS/CDS/EDS) (by default, print all)")
 	xdsCmd.AddCommand(xdsConfigCmd)
 	xdsCmd.AddCommand(xdsStatusCmd)
 	rootCmd.AddCommand(xdsCmd)
