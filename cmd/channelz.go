@@ -177,7 +177,7 @@ func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error
 		w.Flush()
 	}
 	// Print channel trace events
-	if len(selected.Data.Trace.Events) != 0 {
+	if selected.Data.GetTrace() != nil && len(selected.Data.Trace.Events) != 0 {
 		fmt.Println("---")
 		printChannelTraceEvents(selected.Data.Trace.Events)
 	}
