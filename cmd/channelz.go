@@ -164,7 +164,7 @@ func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error
 				continue
 			}
 			fmt.Fprintf(
-				w, "%v\t%v\t%v\t%v/%v/%v\t%v\t\n",
+				w, "%v\t%.50s\t%v\t%v/%v/%v\t%v\t\n",
 				subchannel.Ref.SubchannelId,
 				subchannel.Data.Target,
 				subchannel.Data.State.State,
