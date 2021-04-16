@@ -60,7 +60,7 @@ func sortPerXdsConfigs(clientStatus *csdspb.ClientStatusResponse) {
 func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 	clientStatus := transport.FetchClientStatus()
 	if len(clientStatus.Config) != 1 {
-		return fmt.Errorf("Unexpected number of ClientConfig %v", len(clientStatus.Config))
+		return fmt.Errorf("Received unexpected number of ClientConfig %v", len(clientStatus.Config))
 	}
 	if xdsTypeFlag == "" {
 		// No filters, just print the whole thing
@@ -141,6 +141,9 @@ func printStatusEntry(entry *xdsResourceStatusEntry) {
 
 func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 	clientStatus := transport.FetchClientStatus()
+	if len(clientStatus.Config) != 1 {
+		return fmt.Errorf("Received unexpected number of ClientConfig %v", len(clientStatus.Config))
+	}
 
 	fmt.Fprintln(w, "Name\tStatus\tVersion\tType\tLastUpdated")
 	config := clientStatus.Config[0]

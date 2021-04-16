@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
+	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
 	"github.com/spf13/cobra"
 	zpb "google.golang.org/grpc/channelz/grpc_channelz_v1"
 )
@@ -63,6 +64,10 @@ func printChannelTraceEvents(events []*zpb.ChannelTraceEvent) {
 func printSockets(sockets []*zpb.Socket) {
 	fmt.Fprintln(w, "Socket ID\tLocal->Remote\tStreams(Started/Succeeded/Failed)\tMessages(Sent/Received)\t")
 	for _, socket := range sockets {
+		if socket.GetRef() == nil || socket.GetData() == nil {
+			verbose.Debugf("failed to print socket: %s", socket)
+			continue
+		}
 		fmt.Fprintf(
 			w, "%v\t%v\t%v/%v/%v\t%v/%v\t\n",
 			socket.Ref.SocketId,
@@ -86,6 +91,13 @@ func printObjectAsJSON(data interface{}) error {
 	return nil
 }
 
+func printCreationTimestamp(data *zpb.ChannelData) string {
+	if data.GetTrace() != nil && data.Trace.GetCreationTimestamp() != nil {
+		return prettyTime(data.Trace.CreationTimestamp)
+	}
+	return ""
+}
+
 func channelzChannelsCommandRunWithError(cmd *cobra.Command, args []string) error {
 	var channels = transport.Channels(startIDFlag, maxResultsFlag)
 	// Print as JSON
@@ -95,6 +107,10 @@ func channelzChannelsCommandRunWithError(cmd *cobra.Command, args []string) erro
 	// Print as table
 	fmt.Fprintln(w, "Channel ID\tTarget\tState\tCalls(Started/Succeeded/Failed)\tCreated Time\t")
 	for _, channel := range channels {
+		if channel.GetRef() == nil || channel.GetData() == nil {
+			verbose.Debugf("failed to print channel: %s", channel)
+			continue
+		}
 		fmt.Fprintf(
 			w, "%v\t%v\t%v\t%v/%v/%v\t%v\t\n",
 			channel.Ref.ChannelId,
@@ -103,7 +119,7 @@ func channelzChannelsCommandRunWithError(cmd *cobra.Command, args []string) erro
 			channel.Data.CallsStarted,
 			channel.Data.CallsSucceeded,
 			channel.Data.CallsFailed,
-			prettyTime(channel.Data.Trace.CreationTimestamp),
+			printCreationTimestamp(channel.Data),
 		)
 	}
 	w.Flush()
@@ -135,7 +151,7 @@ func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error
 	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.Data.CallsStarted)
 	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.Data.CallsSucceeded)
 	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.Data.CallsFailed)
-	fmt.Fprintf(w, "Created Time:\t%v\t\n", prettyTime(selected.Data.Trace.CreationTimestamp))
+	fmt.Fprintf(w, "Created Time:\t%v\t\n", printCreationTimestamp(selected.Data))
 	w.Flush()
 	// Print Subchannel list
 	if len(selected.SubchannelRef) > 0 {
@@ -143,21 +159,25 @@ func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error
 		fmt.Fprintln(w, "Subchannel ID\tTarget\tState\tCalls(Started/Succeeded/Failed)\tCreatedTime\t")
 		for _, subchannelRef := range selected.SubchannelRef {
 			var subchannel = transport.Subchannel(subchannelRef.SubchannelId)
+			if subchannel.GetRef() == nil || subchannel.GetData() == nil {
+				verbose.Debugf("failed to print subchannel: %s", subchannel)
+				continue
+			}
 			fmt.Fprintf(
-				w, "%v\t%v\t%v\t%v/%v/%v\t%v\t\n",
+				w, "%v\t%.50s\t%v\t%v/%v/%v\t%v\t\n",
 				subchannel.Ref.SubchannelId,
 				subchannel.Data.Target,
 				subchannel.Data.State.State,
 				subchannel.Data.CallsStarted,
 				subchannel.Data.CallsSucceeded,
 				subchannel.Data.CallsFailed,
-				prettyTime(subchannel.Data.Trace.CreationTimestamp),
+				printCreationTimestamp(subchannel.Data),
 			)
 		}
 		w.Flush()
 	}
 	// Print channel trace events
-	if len(selected.Data.Trace.Events) != 0 {
+	if selected.Data.GetTrace() != nil && len(selected.Data.Trace.Events) != 0 {
 		fmt.Println("---")
 		printChannelTraceEvents(selected.Data.Trace.Events)
 	}
@@ -189,7 +209,7 @@ func channelzSubchannelCommandRunWithError(cmd *cobra.Command, args []string) er
 	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.Data.CallsStarted)
 	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.Data.CallsSucceeded)
 	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.Data.CallsFailed)
-	fmt.Fprintf(w, "Created Time:\t%v\t\n", prettyTime(selected.Data.Trace.CreationTimestamp))
+	fmt.Fprintf(w, "Created Time:\t%v\t\n", printCreationTimestamp(selected.Data))
 	w.Flush()
 	if len(selected.SocketRef) > 0 {
 		// Print socket list
