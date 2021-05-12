@@ -22,7 +22,7 @@ var (
 )
 
 func prettyTime(ts *timestamppb.Timestamp) string {
-	if ts.Seconds == 0 && ts.Nanos == 0 {
+	if ts == nil || (ts.Seconds == 0 && ts.Nanos == 0) {
 		return ""
 	}
 	if timestampFlag {
