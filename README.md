@@ -73,7 +73,10 @@ https://golang.org/doc/install.
 You can install the `grpcdebug` tool using command:
 
 ```shell
+# For Golang 1.16+
 go install -v github.com/grpc-ecosystem/grpcdebug@latest
+# For Golang 1.15
+GO111MODULE=on go get -v github.com/grpc-ecosystem/grpcdebug
 ```
 
 Don't forget to add Golang binaries to your `PATH`:
