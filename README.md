@@ -41,6 +41,8 @@ Use "grpcdebug <target address>  [command] --help" for more information about a 
 - [grpcdebug](#grpcdebug)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
+    - [Use Compiled Binaries](#use-compiled-binaries)
+    - [Compile From Source](#compile-from-source)
   - [Quick Start](#quick-start)
     - [Connect & Security](#connect--security)
       - [Insecure Connection](#insecure-connection)
@@ -67,6 +69,14 @@ Use "grpcdebug <target address>  [command] --help" for more information about a 
 
 ## Installation
 
+### Use Compiled Binaries
+
+The download links of the binaries can be found at
+https://github.com/grpc-ecosystem/grpcdebug/releases. You can find the
+precompiled artifacts for `macOS`/`Linux`/`Windows`.
+
+### Compile From Source
+
 Minimum Golang Version 1.15. Official Golang install guide:
 https://golang.org/doc/install.
 
@@ -77,6 +87,12 @@ You can install the `grpcdebug` tool using command:
 go install -v github.com/grpc-ecosystem/grpcdebug@latest
 # For Golang 1.15
 GO111MODULE=on go get -v github.com/grpc-ecosystem/grpcdebug
+```
+
+You can check your Golang version with:
+
+```shell
+go version
 ```
 
 Don't forget to add Golang binaries to your `PATH`:
