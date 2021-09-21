@@ -67,7 +67,7 @@ Use "grpcdebug <target address>  [command] --help" for more information about a 
 
 ## Installation
 
-Minimum Golang Version 1.12. Official Golang install guide:
+Minimum Golang Version 1.15. Official Golang install guide:
 https://golang.org/doc/install.
 
 You can install the `grpcdebug` tool using command:
