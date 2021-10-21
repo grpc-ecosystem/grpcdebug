@@ -110,6 +110,34 @@ func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
+	for _, genericXdsConfig := range clientStatus.Config[0].GenericXdsConfigs {
+		var printSubject proto.Message
+		tokens := strings.Split(genericXdsConfig.TypeUrl, ".")
+		switch tokens[len(tokens)-1] {
+		case "Listener":
+			if wantLDS {
+				printSubject = genericXdsConfig.GetXdsConfig()
+			}
+		case "RouteConfiguration":
+			if wantRDS {
+				printSubject = genericXdsConfig.GetXdsConfig()
+			}
+		case "Cluster":
+			if wantCDS {
+				printSubject = genericXdsConfig.GetXdsConfig()
+			}
+		case "ClusterLoadAssignment":
+			if wantEDS {
+				printSubject = genericXdsConfig.GetXdsConfig()
+			}
+		}
+		if printSubject != nil {
+			err := printProtoBufMessageAsJSON(printSubject)
+			if err != nil {
+				return fmt.Errorf("Failed to print xDS config: %v", err)
+			}
+		}
+	}
 	return nil
 }
 
@@ -214,6 +242,16 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 				printStatusEntry(&entry)
 			}
 		}
+	}
+	for _, genericXdsConfig := range config.GenericXdsConfigs {
+		entry := xdsResourceStatusEntry{
+			Name:        genericXdsConfig.Name,
+			Status:      genericXdsConfig.ClientStatus,
+			Version:     genericXdsConfig.VersionInfo,
+			Type:        genericXdsConfig.TypeUrl,
+			LastUpdated: genericXdsConfig.LastUpdated,
+		}
+		printStatusEntry(&entry)
 	}
 	w.Flush()
 	return nil
