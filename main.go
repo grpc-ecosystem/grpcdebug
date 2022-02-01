@@ -154,6 +154,9 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/envoy/type/tracing/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/type/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/watchdog/v3"
+
+	// Add the xDS resolver to allow resolving using a "xds:///" target.
+	_ "google.golang.org/grpc/xds"
 )
 
 func main() {
