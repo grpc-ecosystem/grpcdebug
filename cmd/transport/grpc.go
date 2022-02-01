@@ -20,6 +20,7 @@ var csdsClient csdspb.ClientStatusDiscoveryServiceClient
 var healthClient healthpb.HealthClient
 
 const connectionTimeout = time.Second * 5
+const rpcTimeout = time.Second * 15
 
 // Connect connects to the service at address and creates stubs
 func Connect(c config.ServerConfig) {
@@ -49,7 +50,9 @@ func Connect(c config.ServerConfig) {
 
 // Channels returns all available channels
 func Channels(startID, maxResults int64) []*zpb.Channel {
-	channels, err := channelzClient.GetTopChannels(context.Background(), &zpb.GetTopChannelsRequest{StartChannelId: startID, MaxResults: maxResults})
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	channels, err := channelzClient.GetTopChannels(ctx, &zpb.GetTopChannelsRequest{StartChannelId: startID, MaxResults: maxResults})
 	if err != nil {
 		log.Fatalf("failed to fetch top channels: %v", err)
 	}
@@ -58,7 +61,9 @@ func Channels(startID, maxResults int64) []*zpb.Channel {
 
 // Channel returns the channel with given channel ID
 func Channel(channelID int64) *zpb.Channel {
-	channel, err := channelzClient.GetChannel(context.Background(), &zpb.GetChannelRequest{ChannelId: channelID})
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	channel, err := channelzClient.GetChannel(ctx, &zpb.GetChannelRequest{ChannelId: channelID})
 	if err != nil {
 		log.Fatalf("failed to fetch channel id=%v: %v", channelID, err)
 	}
@@ -67,7 +72,9 @@ func Channel(channelID int64) *zpb.Channel {
 
 // Subchannel returns the queried subchannel
 func Subchannel(subchannelID int64) *zpb.Subchannel {
-	subchannel, err := channelzClient.GetSubchannel(context.Background(), &zpb.GetSubchannelRequest{SubchannelId: subchannelID})
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	subchannel, err := channelzClient.GetSubchannel(ctx, &zpb.GetSubchannelRequest{SubchannelId: subchannelID})
 	if err != nil {
 		log.Fatalf("failed to fetch subchannel (id=%v): %v", subchannelID, err)
 	}
@@ -76,7 +83,9 @@ func Subchannel(subchannelID int64) *zpb.Subchannel {
 
 // Servers returns all available servers
 func Servers(startID, maxResults int64) []*zpb.Server {
-	servers, err := channelzClient.GetServers(context.Background(), &zpb.GetServersRequest{StartServerId: startID, MaxResults: maxResults})
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	servers, err := channelzClient.GetServers(ctx, &zpb.GetServersRequest{StartServerId: startID, MaxResults: maxResults})
 	if err != nil {
 		log.Fatalf("failed to fetch servers: %v", err)
 	}
@@ -85,7 +94,9 @@ func Servers(startID, maxResults int64) []*zpb.Server {
 
 // Server returns a server
 func Server(serverID int64) *zpb.Server {
-	server, err := channelzClient.GetServer(context.Background(), &zpb.GetServerRequest{ServerId: serverID})
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	server, err := channelzClient.GetServer(ctx, &zpb.GetServerRequest{ServerId: serverID})
 	if err != nil {
 		log.Fatalf("failed to fetch server (id=%v): %v", serverID, err)
 	}
@@ -94,7 +105,9 @@ func Server(serverID int64) *zpb.Server {
 
 // Socket returns a socket
 func Socket(socketID int64) *zpb.Socket {
-	socket, err := channelzClient.GetSocket(context.Background(), &zpb.GetSocketRequest{SocketId: socketID})
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	socket, err := channelzClient.GetSocket(ctx, &zpb.GetSocketRequest{SocketId: socketID})
 	if err != nil {
 		log.Fatalf("failed to fetch socket (id=%v): %v", socketID, err)
 	}
@@ -103,9 +116,11 @@ func Socket(socketID int64) *zpb.Socket {
 
 // ServerSocket returns all sockets of this server
 func ServerSocket(serverID, startID, maxResults int64) []*zpb.Socket {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
 	var s []*zpb.Socket
 	serverSocketResp, err := channelzClient.GetServerSockets(
-		context.Background(),
+		ctx,
 		&zpb.GetServerSocketsRequest{
 			ServerId:      serverID,
 			StartSocketId: startID,
@@ -123,7 +138,9 @@ func ServerSocket(serverID, startID, maxResults int64) []*zpb.Socket {
 
 // FetchClientStatus fetches the xDS resources status
 func FetchClientStatus() *csdspb.ClientStatusResponse {
-	resp, err := csdsClient.FetchClientStatus(context.Background(), &csdspb.ClientStatusRequest{})
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	resp, err := csdsClient.FetchClientStatus(ctx, &csdspb.ClientStatusRequest{})
 	if err != nil {
 		log.Fatalf("failed to fetch xds config: %v", err)
 	}
@@ -132,7 +149,9 @@ func FetchClientStatus() *csdspb.ClientStatusResponse {
 
 // GetHealthStatus fetches the health checking status of the service from peer
 func GetHealthStatus(service string) string {
-	resp, err := healthClient.Check(context.Background(), &healthpb.HealthCheckRequest{Service: service})
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	resp, err := healthClient.Check(ctx, &healthpb.HealthCheckRequest{Service: service})
 	if err != nil {
 		verbose.Debugf("failed to fetch health status for \"%s\": %v", service, err)
 		return healthpb.HealthCheckResponse_SERVICE_UNKNOWN.String()
