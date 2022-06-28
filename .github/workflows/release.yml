@@ -15,6 +15,9 @@ jobs:
         exclude:
           - goos: darwin
             goarch: 386
+        include:
+          - goos: darwin
+            goarch: arm64
 
     steps:
       - name: Checkout code
