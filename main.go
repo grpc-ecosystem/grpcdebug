@@ -7,7 +7,9 @@ import (
 	// type to present in its descriptor pool. Otherwise, it will fail. Here we
 	// preload as much proto descriptors as possible, so the released binaries can
 	// have better forward compatibility.
+	_ "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/http/dynamo/v3"
 	_ "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/http/squash/v3"
+	_ "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/network/client_ssl_auth/v3"
 	_ "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/network/kafka_broker/v3"
 	_ "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/network/mysql_proxy/v3"
 	_ "github.com/envoyproxy/go-control-plane/contrib/envoy/extensions/filters/network/postgres_proxy/v3alpha"
@@ -61,7 +63,6 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/csrf/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/decompressor/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/dynamic_forward_proxy/v3"
-	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/dynamo/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/ext_authz/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/ext_proc/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/fault/v3"
@@ -91,7 +92,6 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/listener/original_src/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/listener/proxy_protocol/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/listener/tls_inspector/v3"
-	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/client_ssl_auth/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/direct_response/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/dubbo_proxy/router/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/dubbo_proxy/v3"
@@ -116,6 +116,10 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/internal_redirect/allow_listed_routes/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/internal_redirect/previous_routes/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/internal_redirect/safe_cross_scheme/v3"
+	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/load_balancing_policies/least_request/v3"
+	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/load_balancing_policies/ring_hash/v3"
+	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/load_balancing_policies/round_robin/v3"
+	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/load_balancing_policies/wrr_locality/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/network/socket_interface/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/rate_limit_descriptors/expr/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/retry/host/omit_host_metadata/v3"
