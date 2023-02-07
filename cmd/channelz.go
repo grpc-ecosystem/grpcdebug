@@ -92,10 +92,7 @@ func printObjectAsJSON(data interface{}) error {
 }
 
 func printCreationTimestamp(data *zpb.ChannelData) string {
-	if data.GetTrace() != nil && data.Trace.GetCreationTimestamp() != nil {
-		return prettyTime(data.Trace.CreationTimestamp)
-	}
-	return ""
+	return prettyTime(data.GetTrace().GetCreationTimestamp())
 }
 
 func channelzChannelsCommandRunWithError(cmd *cobra.Command, args []string) error {
@@ -115,7 +112,7 @@ func channelzChannelsCommandRunWithError(cmd *cobra.Command, args []string) erro
 			w, "%v\t%v\t%v\t%v/%v/%v\t%v\t\n",
 			channel.Ref.ChannelId,
 			channel.Data.Target,
-			channel.Data.State.State,
+			channel.Data.GetState().GetState(),
 			channel.Data.CallsStarted,
 			channel.Data.CallsSucceeded,
 			channel.Data.CallsFailed,
@@ -145,20 +142,20 @@ func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error
 	}
 	// Print as table
 	// Print Channel information
-	fmt.Fprintf(w, "Channel ID:\t%v\t\n", selected.Ref.ChannelId)
-	fmt.Fprintf(w, "Target:\t%v\t\n", selected.Data.Target)
-	fmt.Fprintf(w, "State:\t%v\t\n", selected.Data.State.State)
-	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.Data.CallsStarted)
-	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.Data.CallsSucceeded)
-	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.Data.CallsFailed)
-	fmt.Fprintf(w, "Created Time:\t%v\t\n", printCreationTimestamp(selected.Data))
+	fmt.Fprintf(w, "Channel ID:\t%v\t\n", selected.GetRef().GetChannelId())
+	fmt.Fprintf(w, "Target:\t%v\t\n", selected.GetData().GetTarget())
+	fmt.Fprintf(w, "State:\t%v\t\n", selected.GetData().GetState().GetState())
+	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.GetData().GetCallsStarted())
+	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.GetData().GetCallsSucceeded())
+	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.GetData().GetCallsFailed())
+	fmt.Fprintf(w, "Created Time:\t%v\t\n", printCreationTimestamp(selected.GetData()))
 	w.Flush()
 	// Print Subchannel list
-	if len(selected.SubchannelRef) > 0 {
+	if len(selected.GetSubchannelRef()) > 0 {
 		fmt.Println("---")
 		fmt.Fprintln(w, "Subchannel ID\tTarget\tState\tCalls(Started/Succeeded/Failed)\tCreatedTime\t")
-		for _, subchannelRef := range selected.SubchannelRef {
-			var subchannel = transport.Subchannel(subchannelRef.SubchannelId)
+		for _, subchannelRef := range selected.GetSubchannelRef() {
+			var subchannel = transport.Subchannel(subchannelRef.GetSubchannelId())
 			if subchannel.GetRef() == nil || subchannel.GetData() == nil {
 				verbose.Debugf("failed to print subchannel: %s", subchannel)
 				continue
@@ -177,7 +174,7 @@ func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error
 		w.Flush()
 	}
 	// Print channel trace events
-	if selected.Data.GetTrace() != nil && len(selected.Data.Trace.Events) != 0 {
+	if len(selected.GetData().GetTrace().GetEvents()) != 0 {
 		fmt.Println("---")
 		printChannelTraceEvents(selected.Data.Trace.Events)
 	}
@@ -203,20 +200,20 @@ func channelzSubchannelCommandRunWithError(cmd *cobra.Command, args []string) er
 	}
 	// Print as table
 	// Print Subchannel information
-	fmt.Fprintf(w, "Subchannel ID:\t%v\t\n", selected.Ref.SubchannelId)
-	fmt.Fprintf(w, "Target:\t%v\t\n", selected.Data.Target)
-	fmt.Fprintf(w, "State:\t%v\t\n", selected.Data.State.State)
-	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.Data.CallsStarted)
-	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.Data.CallsSucceeded)
-	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.Data.CallsFailed)
-	fmt.Fprintf(w, "Created Time:\t%v\t\n", printCreationTimestamp(selected.Data))
+	fmt.Fprintf(w, "Subchannel ID:\t%v\t\n", selected.GetRef().GetSubchannelId())
+	fmt.Fprintf(w, "Target:\t%v\t\n", selected.GetData().GetTarget())
+	fmt.Fprintf(w, "State:\t%v\t\n", selected.GetData().GetState().GetState())
+	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.GetData().GetCallsStarted())
+	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.GetData().GetCallsSucceeded())
+	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.GetData().GetCallsFailed())
+	fmt.Fprintf(w, "Created Time:\t%v\t\n", printCreationTimestamp(selected.GetData()))
 	w.Flush()
 	if len(selected.SocketRef) > 0 {
 		// Print socket list
 		fmt.Println("---")
 		var sockets []*zpb.Socket
-		for _, socketRef := range selected.SocketRef {
-			sockets = append(sockets, transport.Socket(socketRef.SocketId))
+		for _, socketRef := range selected.GetSocketRef() {
+			sockets = append(sockets, transport.Socket(socketRef.GetSocketId()))
 		}
 		printSockets(sockets)
 	}
@@ -242,30 +239,30 @@ func channelzSocketCommandRunWithError(cmd *cobra.Command, args []string) error 
 	}
 	// Print as table
 	// Print Socket information
-	fmt.Fprintf(w, "Socket ID:\t%v\t\n", selected.Ref.SocketId)
-	fmt.Fprintf(w, "Address:\t%v\t\n", fmt.Sprintf("%v->%v", prettyAddress(selected.Local), prettyAddress(selected.Remote)))
-	fmt.Fprintf(w, "Streams Started:\t%v\t\n", selected.Data.StreamsStarted)
-	fmt.Fprintf(w, "Streams Succeeded:\t%v\t\n", selected.Data.StreamsSucceeded)
-	fmt.Fprintf(w, "Streams Failed:\t%v\t\n", selected.Data.StreamsFailed)
-	fmt.Fprintf(w, "Messages Sent:\t%v\t\n", selected.Data.MessagesSent)
-	fmt.Fprintf(w, "Messages Received:\t%v\t\n", selected.Data.MessagesReceived)
-	fmt.Fprintf(w, "Keep Alives Sent:\t%v\t\n", selected.Data.KeepAlivesSent)
-	fmt.Fprintf(w, "Last Local Stream Created:\t%v\t\n", prettyTime(selected.Data.LastLocalStreamCreatedTimestamp))
-	fmt.Fprintf(w, "Last Remote Stream Created:\t%v\t\n", prettyTime(selected.Data.LastRemoteStreamCreatedTimestamp))
-	fmt.Fprintf(w, "Last Message Sent Created:\t%v\t\n", prettyTime(selected.Data.LastMessageSentTimestamp))
-	fmt.Fprintf(w, "Last Message Received Created:\t%v\t\n", prettyTime(selected.Data.LastMessageReceivedTimestamp))
-	fmt.Fprintf(w, "Local Flow Control Window:\t%v\t\n", selected.Data.LocalFlowControlWindow.Value)
-	fmt.Fprintf(w, "Remote Flow Control Window:\t%v\t\n", selected.Data.RemoteFlowControlWindow.Value)
+	fmt.Fprintf(w, "Socket ID:\t%v\t\n", selected.GetRef().GetSocketId())
+	fmt.Fprintf(w, "Address:\t%v\t\n", fmt.Sprintf("%v->%v", prettyAddress(selected.GetLocal()), prettyAddress(selected.GetRemote())))
+	fmt.Fprintf(w, "Streams Started:\t%v\t\n", selected.GetData().GetStreamsStarted())
+	fmt.Fprintf(w, "Streams Succeeded:\t%v\t\n", selected.GetData().GetStreamsSucceeded())
+	fmt.Fprintf(w, "Streams Failed:\t%v\t\n", selected.GetData().GetStreamsFailed())
+	fmt.Fprintf(w, "Messages Sent:\t%v\t\n", selected.GetData().GetMessagesSent())
+	fmt.Fprintf(w, "Messages Received:\t%v\t\n", selected.GetData().GetMessagesReceived())
+	fmt.Fprintf(w, "Keep Alives Sent:\t%v\t\n", selected.GetData().GetKeepAlivesSent())
+	fmt.Fprintf(w, "Last Local Stream Created:\t%v\t\n", prettyTime(selected.GetData().GetLastLocalStreamCreatedTimestamp()))
+	fmt.Fprintf(w, "Last Remote Stream Created:\t%v\t\n", prettyTime(selected.GetData().GetLastRemoteStreamCreatedTimestamp()))
+	fmt.Fprintf(w, "Last Message Sent Created:\t%v\t\n", prettyTime(selected.GetData().GetLastMessageSentTimestamp()))
+	fmt.Fprintf(w, "Last Message Received Created:\t%v\t\n", prettyTime(selected.GetData().GetLastMessageReceivedTimestamp()))
+	fmt.Fprintf(w, "Local Flow Control Window:\t%v\t\n", selected.GetData().GetLocalFlowControlWindow().GetValue())
+	fmt.Fprintf(w, "Remote Flow Control Window:\t%v\t\n", selected.GetData().GetRemoteFlowControlWindow().GetValue())
 	w.Flush()
-	if len(selected.Data.Option) > 0 {
+	if len(selected.GetData().GetOption()) > 0 {
 		fmt.Println("---")
 		fmt.Fprintln(w, "Socket Options Name\tValue\t")
-		for _, option := range selected.Data.Option {
-			if option.Value != "" {
+		for _, option := range selected.GetData().GetOption() {
+			if option.GetValue() != "" {
 				// Prefer human readable value than the Any proto
-				fmt.Fprintf(w, "%v\t%v\t\n", option.Name, option.Value)
+				fmt.Fprintf(w, "%v\t%v\t\n", option.GetName(), option.GetValue())
 			} else {
-				fmt.Fprintf(w, "%v\t%v\t\n", option.Name, option.Additional)
+				fmt.Fprintf(w, "%v\t%v\t\n", option.GetName(), option.GetAdditional())
 			}
 		}
 		w.Flush()
@@ -276,7 +273,7 @@ func channelzSocketCommandRunWithError(cmd *cobra.Command, args []string) error 
 		switch x := security.Model.(type) {
 		case *zpb.Security_Tls_:
 			fmt.Fprintf(w, "Security Model:\t%v\t\n", "TLS")
-			switch y := security.GetTls().CipherSuite.(type) {
+			switch y := security.GetTls().GetCipherSuite().(type) {
 			case *zpb.Security_Tls_StandardName:
 				fmt.Fprintf(w, "Standard Name:\t%v\t\n", security.GetTls().GetStandardName())
 			case *zpb.Security_Tls_OtherName:
@@ -288,7 +285,7 @@ func channelzSocketCommandRunWithError(cmd *cobra.Command, args []string) error 
 			// fmt.Fprintf(w, "Remote Certificate:\t%v\t\n", security.GetTls().RemoteCertificate)
 		case *zpb.Security_Other:
 			fmt.Fprintf(w, "Security Model:\t%v\t\n", "Other")
-			fmt.Fprintf(w, "Name:\t%v\t\n", security.GetOther().Name)
+			fmt.Fprintf(w, "Name:\t%v\t\n", security.GetOther().GetName())
 			// fmt.Fprintf(w, "Value:\t%v\t\n", security.GetOther().Value)
 		default:
 			return fmt.Errorf("Unexpected security model type %T", x)
@@ -315,18 +312,18 @@ func channelzServersCommandRunWithError(cmd *cobra.Command, args []string) error
 	fmt.Fprintln(w, "Server ID\tListen Addresses\tCalls(Started/Succeeded/Failed)\tLast Call Started\t")
 	for _, server := range servers {
 		var listenAddresses []string
-		for _, socketRef := range server.ListenSocket {
+		for _, socketRef := range server.GetListenSocket() {
 			socket := transport.Socket(socketRef.SocketId)
-			listenAddresses = append(listenAddresses, prettyAddress(socket.Local))
+			listenAddresses = append(listenAddresses, prettyAddress(socket.GetLocal()))
 		}
 		fmt.Fprintf(
 			w, "%v\t%v\t%v/%v/%v\t%v\t\n",
-			server.Ref.ServerId,
+			server.GetRef().GetServerId(),
 			listenAddresses,
-			server.Data.CallsStarted,
-			server.Data.CallsSucceeded,
-			server.Data.CallsFailed,
-			prettyTime(server.Data.LastCallStartedTimestamp),
+			server.GetData().GetCallsStarted(),
+			server.GetData().GetCallsSucceeded(),
+			server.GetData().GetCallsFailed(),
+			prettyTime(server.GetData().GetLastCallStartedTimestamp()),
 		)
 	}
 	w.Flush()
@@ -352,18 +349,18 @@ func channelzServerCommandRunWithError(cmd *cobra.Command, args []string) error 
 	}
 	// Print as table
 	var listenAddresses []string
-	for _, socketRef := range selected.ListenSocket {
-		socket := transport.Socket(socketRef.SocketId)
-		listenAddresses = append(listenAddresses, prettyAddress(socket.Local))
+	for _, socketRef := range selected.GetListenSocket() {
+		socket := transport.Socket(socketRef.GetSocketId())
+		listenAddresses = append(listenAddresses, prettyAddress(socket.GetLocal()))
 	}
-	fmt.Fprintf(w, "Server Id:\t%v\t\n", selected.Ref.ServerId)
+	fmt.Fprintf(w, "Server Id:\t%v\t\n", selected.GetRef().GetServerId())
 	fmt.Fprintf(w, "Listen Addresses:\t%v\t\n", listenAddresses)
-	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.Data.CallsStarted)
-	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.Data.CallsSucceeded)
-	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.Data.CallsFailed)
-	fmt.Fprintf(w, "Last Call Started:\t%v\t\n", prettyTime(selected.Data.LastCallStartedTimestamp))
+	fmt.Fprintf(w, "Calls Started:\t%v\t\n", selected.GetData().GetCallsStarted())
+	fmt.Fprintf(w, "Calls Succeeded:\t%v\t\n", selected.GetData().GetCallsSucceeded())
+	fmt.Fprintf(w, "Calls Failed:\t%v\t\n", selected.GetData().GetCallsFailed())
+	fmt.Fprintf(w, "Last Call Started:\t%v\t\n", prettyTime(selected.GetData().GetLastCallStartedTimestamp()))
 	w.Flush()
-	if sockets := transport.ServerSocket(selected.Ref.ServerId, startIDFlag, maxResultsFlag); len(sockets) > 0 {
+	if sockets := transport.ServerSocket(selected.GetRef().GetServerId(), startIDFlag, maxResultsFlag); len(sockets) > 0 {
 		// Print socket list
 		fmt.Println("---")
 		printSockets(sockets)
