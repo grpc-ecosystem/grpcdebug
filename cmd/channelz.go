@@ -183,7 +183,7 @@ func channelzChannelCommandRunWithError(cmd *cobra.Command, args []string) error
 
 var channelzChannelCmd = &cobra.Command{
 	Use:   "channel <channel id or URL>",
-	Short: "Display channel states in human readable way.",
+	Short: "Display channel states in a human readable way.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  channelzChannelCommandRunWithError,
 }
@@ -221,8 +221,8 @@ func channelzSubchannelCommandRunWithError(cmd *cobra.Command, args []string) er
 }
 
 var channelzSubchannelCmd = &cobra.Command{
-	Use:   "subchannel",
-	Short: "Display subchannel states in human readable way.",
+	Use:   "subchannel <id>",
+	Short: "Display subchannel states in a human readable way.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  channelzSubchannelCommandRunWithError,
 }
@@ -296,8 +296,8 @@ func channelzSocketCommandRunWithError(cmd *cobra.Command, args []string) error 
 }
 
 var channelzSocketCmd = &cobra.Command{
-	Use:   "socket",
-	Short: "Display socket states in human readable way.",
+	Use:   "socket <id>",
+	Short: "Display socket states in a human readable way.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  channelzSocketCommandRunWithError,
 }
@@ -332,7 +332,7 @@ func channelzServersCommandRunWithError(cmd *cobra.Command, args []string) error
 
 var channelzServersCmd = &cobra.Command{
 	Use:   "servers",
-	Short: "List servers in human readable way.",
+	Short: "List servers in a human readable way.",
 	Args:  cobra.NoArgs,
 	RunE:  channelzServersCommandRunWithError,
 }
@@ -370,14 +370,14 @@ func channelzServerCommandRunWithError(cmd *cobra.Command, args []string) error 
 
 var channelzServerCmd = &cobra.Command{
 	Use:   "server <id>",
-	Short: "Display server state in human readable way.",
+	Short: "Display the server state in a human readable way.",
 	Args:  cobra.ExactArgs(1),
 	RunE:  channelzServerCommandRunWithError,
 }
 
 var channelzCmd = &cobra.Command{
 	Use:   "channelz",
-	Short: "Display gRPC states in human readable way.",
+	Short: "Display gRPC states in a human readable way.",
 	Args:  cobra.NoArgs,
 }
 
