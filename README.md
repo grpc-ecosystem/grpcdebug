@@ -231,8 +231,6 @@ then work down to the details.
 For all Channelz commands, you can add `--json` to get the raw Channelz output.
 
 ```shell
-grpcdebug localhost:50051 channelz channels --json
-
 grpcdebug localhost:50051 channelz servers --json
 #[
 #  {
