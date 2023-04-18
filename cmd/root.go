@@ -48,7 +48,7 @@ Use "grpcdebug <target address> {{ .CommandPath | ChildCommandPath }} [command] 
 
 var rootCmd = &cobra.Command{
 	Use:   "grpcdebug",
-	Short: "grpcdebug is n gRPC service admin CLI",
+	Short: "grpcdebug is a gRPC service admin CLI",
 }
 
 func initConfig() {
