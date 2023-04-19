@@ -21,7 +21,7 @@ Usage:
   grpcdebug <target address> [flags] <command>
 
 Available Commands:
-  channelz    Display gRPC states in human readable way.
+  channelz    Display gRPC states in a human readable way.
   health      Check health status of the target service (default "").
   help        Help about any command
   xds         Fetch xDS related information.
@@ -103,7 +103,7 @@ export PATH=$PATH:$(go env GOPATH)/bin
 
 ## Quick Start
 
-If certain commands if confusing, please try to use `-h` to get more context.
+If certain commands are confusing, please try to use `-h` to get more context.
 Suggestions and ideas are welcome, please post them to
 https://github.com/grpc-ecosystem/grpcdebug/issues!
 
@@ -123,7 +123,7 @@ go run main.go
 
 #### Insecure Connection
 
-To connect to a gRPC endpoint without any credentials, we don't any special
+To connect to a gRPC endpoint without any credentials, we don't use any special
 flags. If the local network can connect to the given gRPC endpoint, it should
 just work. For example, if I have a gRPC application exposing admin services at
 `localhost:50051`:
@@ -134,7 +134,7 @@ grpcdebug localhost:50051 channelz channels
 
 #### TLS Connection - Flags
 
-One way to establish a TLS connection with grpcdebug is specifying the
+One way to establish a TLS connection with grpcdebug is by specifying the
 credentials via command line flags. For example:
 
 ```shell
@@ -159,22 +159,22 @@ servers:
 Here is an example config file
 [grpcdebug_config.yaml](internal/testing/grpcdebug_config.yaml).
 
-Each server config can have following settings:
+Each server config can have the following settings:
 
 * Pattern: the string right after `Server ` which dictates if this rule should
   apply;
 * RealAddress: if present, override the given target address, which allows
   giving nicknames/aliases to frequently used addresses;
-* Security: allows `insecure` or `tls`, expecting more in future;
+* Security: allows `insecure` or `tls`, expecting more in the future;
 * CredentialFile: path to the credential file;
-* ServerNameOverride: override the hostname, useful for local reproductions to
-  comply the certificates' common name requirement.
+* ServerNameOverride: override the hostname, which is useful for local reproductions to
+  comply with the certificates' common name requirement.
 
-grpcdebug searches the config file in following order:
+grpcdebug searches the config file in the following order:
 
-1. Check if environment variable `GRPCDEBUG_CONFIG` is set, if so, load from the
+1. Check if the environment variable `GRPCDEBUG_CONFIG` is set, if so, load from the
    given path;
-2. Try to load the `grpcdebug_config.yaml` file in current working directory;
+2. Try to load the `grpcdebug_config.yaml` file in the current working directory;
 3. Try to load the `grpcdebug_config.yaml` file in the user config directory (Linux:
    `$HOME/.config`, macOS: `$HOME/Library/Application Support`, Windows:
    `%AppData%`, see
@@ -190,11 +190,11 @@ GRPCDEBUG_CONFIG=internal/testing/grpcdebug_config.yaml grpcdebug prod channelz 
 
 ### Health
 
-grpcdebug can be used to fetch the health checking status of peer gRPC
+grpcdebug can be used to fetch the health checking status of a peer gRPC
 application (see
 [health.proto](https://github.com/grpc/grpc/blob/master/src/proto/grpc/health/v1/health.proto)).
-gRPC's health checking works at service-level, meaning services registered on
-the same gRPC server may have different health status. The health status of
+gRPC's health checking works at the service-level, meaning services registered on
+the same gRPC server may have different health statuses. The health status of
 service `""` is used to represent the overall health status of the gRPC
 application.
 
@@ -223,14 +223,38 @@ debug information. Also, Channelz has a web interface (see
 [gdebug](https://github.com/grpc/grpc-experiments/tree/master/gdebug)).
 grpcdebug is able to fetch information and present it in a more readable way.
 
+Generally, you wil start with either the `servers` or `channels` command and
+then work down to the details.
 
 #### Usage 1: Raw Channelz Output
 
 For all Channelz commands, you can add `--json` to get the raw Channelz output.
 
 ```shell
-grpcdebug localhost:50051 channelz channels --json
 grpcdebug localhost:50051 channelz servers --json
+#[
+#  {
+#    "ref": {
+#      "server_id": 2,
+#      "name": "ServerImpl{logId=2, transportServer=NettyServer{logId=1, addresses=[0.0.0.0/0.0.0.0:50051]}}"
+#    },
+#    "data": {
+#      "calls_started": 3,
+#      "calls_succeeded": 2,
+#      "last_call_started_timestamp": {
+#        "seconds": 1680220688,
+#        "nanos": 444000000
+#      }
+#    },
+#    "listen_socket": [
+#      {
+#        "socket_id": 3,
+#        "name": "ListenSocket{logId=3, channel=[id: 0x05f9f16c, L:/0:0:0:0:0:0:0:0%0:50051]}"
+#      }
+#    ]
+#  }
+#]
+
 ```
 
 #### Usage 2: List Client Channels
@@ -515,3 +539,4 @@ grpcdebug localhost:50051 xds config --type=eds
    std::unique_ptr<Server> server(builder.BuildAndStart());
    std::cout << "Server listening on " << server_address << std::endl;
 ```
+

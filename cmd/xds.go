@@ -273,7 +273,7 @@ var xdsCmd = &cobra.Command{
 }
 
 func init() {
-	xdsConfigCmd.Flags().StringVarP(&xdsTypeFlag, "type", "y", "", "Filters the wanted type of xDS config to print (separated by comma) (available types: LDS/RDS/CDS/EDS) (by default, print all)")
+	xdsConfigCmd.Flags().StringVarP(&xdsTypeFlag, "type", "y", "", "Filters the wanted type of xDS config to print (separated by commas) (available types: LDS,RDS,CDS,EDS) (by default, print all)")
 	xdsCmd.AddCommand(xdsConfigCmd)
 	xdsCmd.AddCommand(xdsStatusCmd)
 	rootCmd.AddCommand(xdsCmd)
