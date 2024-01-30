@@ -3,7 +3,7 @@ module github.com/grpc-ecosystem/grpcdebug
 go 1.15
 
 require (
-	github.com/dustin/go-humanize v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/envoyproxy/go-control-plane v0.12.0
 	github.com/golang/protobuf v1.5.3
 	github.com/spf13/cobra v1.1.1
