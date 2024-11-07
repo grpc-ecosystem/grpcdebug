@@ -1,14 +1,14 @@
 module github.com/grpc-ecosystem/grpcdebug
 
-go 1.22.7
+go 1.23
 
 require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/envoyproxy/go-control-plane v0.13.1
 	github.com/golang/protobuf v1.5.4
-	github.com/spf13/cobra v1.1.1
-	google.golang.org/grpc v1.67.1
-	google.golang.org/grpc/examples v0.0.0-20241023165937-8212cf037683
+	github.com/spf13/cobra v1.8.1
+	google.golang.org/grpc v1.68.0
+	google.golang.org/grpc/examples v0.0.0-20241106195202-b3393d95a74e
 	google.golang.org/protobuf v1.35.1
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -20,11 +20,11 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cncf/xds/go v0.0.0-20240905190251-b4127c9b8d78 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.1.0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
