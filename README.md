@@ -77,16 +77,13 @@ precompiled artifacts for `macOS`/`Linux`/`Windows`.
 
 ### Compile From Source
 
-Minimum Golang Version 1.15. Official Golang install guide:
+Minimum Golang Version 1.23. Official Golang install guide:
 https://golang.org/doc/install.
 
 You can install the `grpcdebug` tool using command:
 
 ```shell
-# For Golang 1.16+
 go install -v github.com/grpc-ecosystem/grpcdebug@latest
-# For Golang 1.15
-GO111MODULE=on go get -v github.com/grpc-ecosystem/grpcdebug
 ```
 
 You can check your Golang version with:
@@ -392,6 +389,9 @@ service mesh control plane.
 
 ```shell
 grpcdebug localhost:50051 xds status
+Received 1 ClientConfig(s)
+
+=== Config 0 ===
 # Name                                                                   Status    Version               Type                                                                 LastUpdated
 # xds-test-server:1337                                                   ACKED     1617141154495058478   type.googleapis.com/envoy.config.listener.v3.Listener                2 days ago
 # URL_MAP/1040920224690_sergii-psm-test-url-map_0_xds-test-server:1337   ACKED     1617141154495058478   type.googleapis.com/envoy.config.route.v3.RouteConfiguration         2 days ago
@@ -403,6 +403,7 @@ grpcdebug localhost:50051 xds status
 
 ```shell
 grpcdebug localhost:50051 xds config
+# Received 1 ClientConfig(s)
 # {
 #   "config":  [
 #     {
