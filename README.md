@@ -389,9 +389,6 @@ service mesh control plane.
 
 ```shell
 grpcdebug localhost:50051 xds status
-Received 1 ClientConfig(s)
-
-=== Config 0 ===
 # Name                                                                   Status    Version               Type                                                                 LastUpdated
 # xds-test-server:1337                                                   ACKED     1617141154495058478   type.googleapis.com/envoy.config.listener.v3.Listener                2 days ago
 # URL_MAP/1040920224690_sergii-psm-test-url-map_0_xds-test-server:1337   ACKED     1617141154495058478   type.googleapis.com/envoy.config.route.v3.RouteConfiguration         2 days ago
@@ -403,7 +400,6 @@ Received 1 ClientConfig(s)
 
 ```shell
 grpcdebug localhost:50051 xds config
-# Received 1 ClientConfig(s)
 # {
 #   "config":  [
 #     {

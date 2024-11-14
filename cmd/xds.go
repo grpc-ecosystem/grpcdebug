@@ -52,16 +52,16 @@ func priorityPerXdsConfig(x *csdspb.PerXdsConfig) int {
 }
 
 func sortPerXdsConfigs(clientStatus *csdspb.ClientStatusResponse) {
-	for _, config := range clientStatus.Config {
-		sort.Slice(config.XdsConfig, func(i, j int) bool {
-			return priorityPerXdsConfig(config.XdsConfig[i]) < priorityPerXdsConfig(config.XdsConfig[j])
-		})
-	}
+	sort.Slice(clientStatus.Config[0].XdsConfig, func(i, j int) bool {
+		return priorityPerXdsConfig(clientStatus.Config[0].XdsConfig[i]) < priorityPerXdsConfig(clientStatus.Config[0].XdsConfig[j])
+	})
 }
 
 func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 	clientStatus := transport.FetchClientStatus()
-	fmt.Printf("Received %v ClientConfig(s)\n", len(clientStatus.Config))
+	if len(clientStatus.Config) != 1 {
+		return fmt.Errorf("Received unexpected number of ClientConfig %v", len(clientStatus.Config))
+	}
 	if xdsTypeFlag == "" {
 		// No filters, just print the whole thing
 		sortPerXdsConfigs(clientStatus)
@@ -82,63 +82,60 @@ func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 			wantEDS = true
 		}
 	}
-	for idx, config := range clientStatus.Config {
-		fmt.Printf("\n=== Config %d ===\n", idx)
-		// Filter the CSDS output
-		for _, genericXdsConfig := range config.GenericXdsConfigs {
+	// Filter the CSDS output
+	for _, genericXdsConfig := range clientStatus.Config[0].GenericXdsConfigs {
+		var printSubject proto.Message
+		tokens := strings.Split(genericXdsConfig.TypeUrl, ".")
+		switch tokens[len(tokens)-1] {
+		case "Listener":
+			if wantLDS {
+				printSubject = genericXdsConfig.GetXdsConfig()
+			}
+		case "RouteConfiguration":
+			if wantRDS {
+				printSubject = genericXdsConfig.GetXdsConfig()
+			}
+		case "Cluster":
+			if wantCDS {
+				printSubject = genericXdsConfig.GetXdsConfig()
+			}
+		case "ClusterLoadAssignment":
+			if wantEDS {
+				printSubject = genericXdsConfig.GetXdsConfig()
+			}
+		}
+		if printSubject != nil {
+			err := printProtoBufMessageAsJSON(printSubject)
+			if err != nil {
+				return fmt.Errorf("Failed to print xDS config: %v", err)
+			}
+		}
+	}
+	if len(clientStatus.Config[0].GenericXdsConfigs) == 0 {
+		for _, xdsConfig := range clientStatus.Config[0].XdsConfig {
 			var printSubject proto.Message
-			tokens := strings.Split(genericXdsConfig.TypeUrl, ".")
-			switch tokens[len(tokens)-1] {
-			case "Listener":
+			switch xdsConfig.PerXdsConfig.(type) {
+			case *csdspb.PerXdsConfig_ListenerConfig:
 				if wantLDS {
-					printSubject = genericXdsConfig.GetXdsConfig()
+					printSubject = xdsConfig.GetListenerConfig()
 				}
-			case "RouteConfiguration":
+			case *csdspb.PerXdsConfig_RouteConfig:
 				if wantRDS {
-					printSubject = genericXdsConfig.GetXdsConfig()
+					printSubject = xdsConfig.GetRouteConfig()
 				}
-			case "Cluster":
+			case *csdspb.PerXdsConfig_ClusterConfig:
 				if wantCDS {
-					printSubject = genericXdsConfig.GetXdsConfig()
+					printSubject = xdsConfig.GetClusterConfig()
 				}
-			case "ClusterLoadAssignment":
+			case *csdspb.PerXdsConfig_EndpointConfig:
 				if wantEDS {
-					printSubject = genericXdsConfig.GetXdsConfig()
+					printSubject = xdsConfig.GetEndpointConfig()
 				}
 			}
 			if printSubject != nil {
 				err := printProtoBufMessageAsJSON(printSubject)
 				if err != nil {
 					return fmt.Errorf("Failed to print xDS config: %v", err)
-				}
-			}
-		}
-		if len(config.GenericXdsConfigs) == 0 {
-			for _, xdsConfig := range config.XdsConfig {
-				var printSubject proto.Message
-				switch xdsConfig.PerXdsConfig.(type) {
-				case *csdspb.PerXdsConfig_ListenerConfig:
-					if wantLDS {
-						printSubject = xdsConfig.GetListenerConfig()
-					}
-				case *csdspb.PerXdsConfig_RouteConfig:
-					if wantRDS {
-						printSubject = xdsConfig.GetRouteConfig()
-					}
-				case *csdspb.PerXdsConfig_ClusterConfig:
-					if wantCDS {
-						printSubject = xdsConfig.GetClusterConfig()
-					}
-				case *csdspb.PerXdsConfig_EndpointConfig:
-					if wantEDS {
-						printSubject = xdsConfig.GetEndpointConfig()
-					}
-				}
-				if printSubject != nil {
-					err := printProtoBufMessageAsJSON(printSubject)
-					if err != nil {
-						return fmt.Errorf("Failed to print xDS config: %v", err)
-					}
 				}
 			}
 		}
@@ -174,93 +171,93 @@ func printStatusEntry(entry *xdsResourceStatusEntry) {
 
 func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 	clientStatus := transport.FetchClientStatus()
-	fmt.Printf("Received %v ClientConfig(s)\n", len(clientStatus.Config))
+	if len(clientStatus.Config) != 1 {
+		return fmt.Errorf("Received unexpected number of ClientConfig %v", len(clientStatus.Config))
+	}
 
-	for idx, config := range clientStatus.Config {
-		fmt.Fprintf(w, "\n=== Config %d ===\n", idx)
-		fmt.Fprintln(w, "Name\tStatus\tVersion\tType\tLastUpdated")
-		for _, genericXdsConfig := range config.GenericXdsConfigs {
-			entry := xdsResourceStatusEntry{
-				Name:        genericXdsConfig.Name,
-				Status:      genericXdsConfig.ClientStatus,
-				Version:     genericXdsConfig.VersionInfo,
-				Type:        genericXdsConfig.TypeUrl,
-				LastUpdated: genericXdsConfig.LastUpdated,
-			}
-			printStatusEntry(&entry)
+	fmt.Fprintln(w, "Name\tStatus\tVersion\tType\tLastUpdated")
+	config := clientStatus.Config[0]
+	for _, genericXdsConfig := range config.GenericXdsConfigs {
+		entry := xdsResourceStatusEntry{
+			Name:        genericXdsConfig.Name,
+			Status:      genericXdsConfig.ClientStatus,
+			Version:     genericXdsConfig.VersionInfo,
+			Type:        genericXdsConfig.TypeUrl,
+			LastUpdated: genericXdsConfig.LastUpdated,
 		}
-		if len(config.GenericXdsConfigs) == 0 {
-			for _, xdsConfig := range config.XdsConfig {
-				switch xdsConfig.PerXdsConfig.(type) {
-				case *csdspb.PerXdsConfig_ListenerConfig:
-					for _, dynamicListener := range xdsConfig.GetListenerConfig().DynamicListeners {
-						entry := xdsResourceStatusEntry{
-							Name:   dynamicListener.Name,
-							Status: dynamicListener.ClientStatus,
-						}
-						if state := dynamicListener.GetActiveState(); state != nil {
-							entry.Version = state.VersionInfo
-							entry.Type = state.Listener.TypeUrl
-							entry.LastUpdated = state.LastUpdated
-						}
-						printStatusEntry(&entry)
+		printStatusEntry(&entry)
+	}
+	if len(config.GenericXdsConfigs) == 0 {
+		for _, xdsConfig := range config.XdsConfig {
+			switch xdsConfig.PerXdsConfig.(type) {
+			case *csdspb.PerXdsConfig_ListenerConfig:
+				for _, dynamicListener := range xdsConfig.GetListenerConfig().DynamicListeners {
+					entry := xdsResourceStatusEntry{
+						Name:   dynamicListener.Name,
+						Status: dynamicListener.ClientStatus,
 					}
-				case *csdspb.PerXdsConfig_RouteConfig:
-					for _, dynamicRouteConfig := range xdsConfig.GetRouteConfig().DynamicRouteConfigs {
-						entry := xdsResourceStatusEntry{
-							Status:      dynamicRouteConfig.ClientStatus,
-							Version:     dynamicRouteConfig.VersionInfo,
-							Type:        dynamicRouteConfig.RouteConfig.TypeUrl,
-							LastUpdated: dynamicRouteConfig.LastUpdated,
-						}
-						if packed := dynamicRouteConfig.GetRouteConfig(); packed != nil {
-							var routeConfig routepb.RouteConfiguration
-							if err := ptypes.UnmarshalAny(packed, &routeConfig); err != nil {
-								return err
-							}
-							entry.Name = routeConfig.Name
-						}
-						printStatusEntry(&entry)
+					if state := dynamicListener.GetActiveState(); state != nil {
+						entry.Version = state.VersionInfo
+						entry.Type = state.Listener.TypeUrl
+						entry.LastUpdated = state.LastUpdated
 					}
-				case *csdspb.PerXdsConfig_ClusterConfig:
-					for _, dynamicCluster := range xdsConfig.GetClusterConfig().DynamicActiveClusters {
-						entry := xdsResourceStatusEntry{
-							Status:      dynamicCluster.ClientStatus,
-							Version:     dynamicCluster.VersionInfo,
-							Type:        dynamicCluster.Cluster.TypeUrl,
-							LastUpdated: dynamicCluster.LastUpdated,
-						}
-						if packed := dynamicCluster.GetCluster(); packed != nil {
-							var cluster clusterpb.Cluster
-							if err := ptypes.UnmarshalAny(packed, &cluster); err != nil {
-								return err
-							}
-							entry.Name = cluster.Name
-						}
-						printStatusEntry(&entry)
+					printStatusEntry(&entry)
+				}
+			case *csdspb.PerXdsConfig_RouteConfig:
+				for _, dynamicRouteConfig := range xdsConfig.GetRouteConfig().DynamicRouteConfigs {
+					entry := xdsResourceStatusEntry{
+						Status:      dynamicRouteConfig.ClientStatus,
+						Version:     dynamicRouteConfig.VersionInfo,
+						Type:        dynamicRouteConfig.RouteConfig.TypeUrl,
+						LastUpdated: dynamicRouteConfig.LastUpdated,
 					}
-				case *csdspb.PerXdsConfig_EndpointConfig:
-					for _, dynamicEndpoint := range xdsConfig.GetEndpointConfig().GetDynamicEndpointConfigs() {
-						entry := xdsResourceStatusEntry{
-							Status:      dynamicEndpoint.ClientStatus,
-							Version:     dynamicEndpoint.VersionInfo,
-							Type:        dynamicEndpoint.EndpointConfig.TypeUrl,
-							LastUpdated: dynamicEndpoint.LastUpdated,
+					if packed := dynamicRouteConfig.GetRouteConfig(); packed != nil {
+						var routeConfig routepb.RouteConfiguration
+						if err := ptypes.UnmarshalAny(packed, &routeConfig); err != nil {
+							return err
 						}
-						if packed := dynamicEndpoint.GetEndpointConfig(); packed != nil {
-							var endpoint endpointpb.ClusterLoadAssignment
-							if err := ptypes.UnmarshalAny(packed, &endpoint); err != nil {
-								return err
-							}
-							entry.Name = endpoint.ClusterName
-						}
-						printStatusEntry(&entry)
+						entry.Name = routeConfig.Name
 					}
+					printStatusEntry(&entry)
+				}
+			case *csdspb.PerXdsConfig_ClusterConfig:
+				for _, dynamicCluster := range xdsConfig.GetClusterConfig().DynamicActiveClusters {
+					entry := xdsResourceStatusEntry{
+						Status:      dynamicCluster.ClientStatus,
+						Version:     dynamicCluster.VersionInfo,
+						Type:        dynamicCluster.Cluster.TypeUrl,
+						LastUpdated: dynamicCluster.LastUpdated,
+					}
+					if packed := dynamicCluster.GetCluster(); packed != nil {
+						var cluster clusterpb.Cluster
+						if err := ptypes.UnmarshalAny(packed, &cluster); err != nil {
+							return err
+						}
+						entry.Name = cluster.Name
+					}
+					printStatusEntry(&entry)
+				}
+			case *csdspb.PerXdsConfig_EndpointConfig:
+				for _, dynamicEndpoint := range xdsConfig.GetEndpointConfig().GetDynamicEndpointConfigs() {
+					entry := xdsResourceStatusEntry{
+						Status:      dynamicEndpoint.ClientStatus,
+						Version:     dynamicEndpoint.VersionInfo,
+						Type:        dynamicEndpoint.EndpointConfig.TypeUrl,
+						LastUpdated: dynamicEndpoint.LastUpdated,
+					}
+					if packed := dynamicEndpoint.GetEndpointConfig(); packed != nil {
+						var endpoint endpointpb.ClusterLoadAssignment
+						if err := ptypes.UnmarshalAny(packed, &endpoint); err != nil {
+							return err
+						}
+						entry.Name = endpoint.ClusterName
+					}
+					printStatusEntry(&entry)
 				}
 			}
 		}
-		w.Flush()
 	}
+	w.Flush()
 	return nil
 }
 
