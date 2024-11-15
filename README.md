@@ -77,16 +77,13 @@ precompiled artifacts for `macOS`/`Linux`/`Windows`.
 
 ### Compile From Source
 
-Minimum Golang Version 1.15. Official Golang install guide:
+Minimum Golang Version 1.22. Official Golang install guide:
 https://golang.org/doc/install.
 
 You can install the `grpcdebug` tool using command:
 
 ```shell
-# For Golang 1.16+
 go install -v github.com/grpc-ecosystem/grpcdebug@latest
-# For Golang 1.15
-GO111MODULE=on go get -v github.com/grpc-ecosystem/grpcdebug
 ```
 
 You can check your Golang version with:
