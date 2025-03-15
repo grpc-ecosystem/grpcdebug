@@ -1,15 +1,17 @@
 module github.com/grpc-ecosystem/grpcdebug
 
-go 1.22
+go 1.22.7
+
+toolchain go1.23.6
 
 require (
 	github.com/dustin/go-humanize v1.0.1
-	github.com/envoyproxy/go-control-plane v0.13.1
+	github.com/envoyproxy/go-control-plane v0.13.4
 	github.com/golang/protobuf v1.5.4
 	github.com/spf13/cobra v1.8.1
 	google.golang.org/grpc v1.68.0
 	google.golang.org/grpc/examples v0.0.0-20241106195202-b3393d95a74e
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.35.2
 	gopkg.in/yaml.v2 v2.4.0
 )
 
