@@ -1,0 +1,98 @@
+{
+  "config": [
+    {
+      "node": {
+        "id": "projects/1040920224690/networks/default/nodes/primary-node",
+        "cluster": "cluster",
+        "userAgentName": "gRPC Java",
+        "userAgentVersion": "1.60.0"
+      },
+      "clientScope": "primary",
+      "xdsConfig": [
+        {
+          "listenerConfig": {
+            "versionInfo": "1617141154495058478",
+            "dynamicListeners": [
+              {
+                "name": "primary-listener:1337",
+                "activeState": {
+                  "versionInfo": "1617141154495058478",
+                  "listener": {
+                    "@type": "type.googleapis.com/envoy.config.listener.v3.Listener",
+                    "name": "primary-listener:1337"
+                  },
+                  "lastUpdated": "2021-03-31T01:20:33.144Z"
+                },
+                "clientStatus": "ACKED"
+              }
+            ]
+          }
+        },
+        {
+          "clusterConfig": {
+            "versionInfo": "1617141154495058478",
+            "dynamicActiveClusters": [
+              {
+                "versionInfo": "1617141154495058478",
+                "cluster": {
+                  "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster",
+                  "name": "primary-cluster",
+                  "type": "EDS"
+                },
+                "lastUpdated": "2021-03-31T01:20:33.853Z",
+                "clientStatus": "ACKED"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "node": {
+        "id": "projects/1040920224690/networks/default/nodes/fallback-node",
+        "cluster": "cluster",
+        "userAgentName": "gRPC Java",
+        "userAgentVersion": "1.60.0"
+      },
+      "clientScope": "fallback",
+      "xdsConfig": [
+        {
+          "listenerConfig": {
+            "versionInfo": "1617141154495058479",
+            "dynamicListeners": [
+              {
+                "name": "fallback-listener:1338",
+                "activeState": {
+                  "versionInfo": "1617141154495058479",
+                  "listener": {
+                    "@type": "type.googleapis.com/envoy.config.listener.v3.Listener",
+                    "name": "fallback-listener:1338"
+                  },
+                  "lastUpdated": "2021-03-31T01:25:33.144Z"
+                },
+                "clientStatus": "ACKED"
+              }
+            ]
+          }
+        },
+        {
+          "clusterConfig": {
+            "versionInfo": "1617141154495058479",
+            "dynamicActiveClusters": [
+              {
+                "versionInfo": "1617141154495058479",
+                "cluster": {
+                  "@type": "type.googleapis.com/envoy.config.cluster.v3.Cluster",
+                  "name": "fallback-cluster",
+                  "type": "EDS"
+                },
+                "lastUpdated": "2021-03-31T01:25:33.853Z",
+                "clientStatus": "ACKED"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
