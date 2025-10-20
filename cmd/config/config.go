@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"runtime"
@@ -42,7 +42,7 @@ func loadServerConfigsFromFile(path string) map[string]ServerConfig {
 	if err != nil {
 		panic(err)
 	}
-	bytes, err := ioutil.ReadAll(file)
+	bytes, err := io.ReadAll(file)
 	if err != nil {
 		panic(err)
 	}

@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	zpb "google.golang.org/grpc/channelz/grpc_channelz_v1"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
@@ -19,7 +20,6 @@ var channelzClient zpb.ChannelzClient
 var csdsClient csdspb.ClientStatusDiscoveryServiceClient
 var healthClient healthpb.HealthClient
 
-const connectionTimeout = time.Second * 5
 const rpcTimeout = time.Second * 15
 
 // Connect connects to the service at address and creates stubs
@@ -34,12 +34,9 @@ func Connect(c config.ServerConfig) {
 		}
 		credOption = grpc.WithTransportCredentials(cred)
 	} else {
-		credOption = grpc.WithInsecure()
+		credOption = grpc.WithTransportCredentials(insecure.NewCredentials())
 	}
-	// Dial, wait for READY, with a timeout.
-	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
-	defer cancel()
-	conn, err = grpc.DialContext(ctx, c.RealAddress, credOption, grpc.WithBlock())
+	conn, err = grpc.NewClient(c.RealAddress, credOption)
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}

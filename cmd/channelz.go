@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/golang/protobuf/ptypes"
-	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
 	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
 	"github.com/spf13/cobra"
 	zpb "google.golang.org/grpc/channelz/grpc_channelz_v1"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -26,10 +26,9 @@ func prettyTime(ts *timestamppb.Timestamp) string {
 		return ""
 	}
 	if timestampFlag {
-		return ptypes.TimestampString(ts)
+		return ts.AsTime().Format(time.RFC3339Nano)
 	}
-	t, _ := ptypes.Timestamp(ts)
-	return humanize.Time(t)
+	return humanize.Time(ts.AsTime())
 }
 
 func prettyAddress(addr *zpb.Address) string {
@@ -82,7 +81,7 @@ func printSockets(sockets []*zpb.Socket) {
 	w.Flush()
 }
 
-func printObjectAsJSON(data interface{}) error {
+func printObjectAsJSON(data any) error {
 	json, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err

@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"math/rand"
 	"net"
@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/testdata"
 
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/fault/v3"
@@ -47,7 +48,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	configDump, err := ioutil.ReadAll(file)
+	configDump, err := io.ReadAll(file)
 	if err != nil {
 		panic(err)
 	}
@@ -62,9 +63,8 @@ type server struct {
 }
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-
 	if int(rand.Int31n(100)) <= *abortPercentageFlag {
-		return nil, grpc.Errorf(codes.Code(rand.Int31n(15)+1), "Fault injected")
+		return nil, status.Errorf(codes.Code(rand.Int31n(15)+1), "Fault injected")
 	}
 	return &pb.HelloReply{Message: "Hello " + in.Name}, nil
 }
@@ -96,8 +96,6 @@ func setupAdminServer(s *grpc.Server) {
 func main() {
 	// Parse the flags
 	flag.Parse()
-	// Seed the RNG
-	rand.Seed(time.Now().UnixNano())
 	// Creates the primary server
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *servingPortFlag))
 	if err != nil {
@@ -140,7 +138,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", *servingPortFlag), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.NewClient(fmt.Sprintf("localhost:%d", *servingPortFlag), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		panic(err)
 	}

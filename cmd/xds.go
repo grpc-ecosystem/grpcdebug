@@ -12,9 +12,8 @@ import (
 	endpointpb "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	routepb "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	csdspb "github.com/envoyproxy/go-control-plane/envoy/service/status/v3"
-	"github.com/golang/protobuf/ptypes"
-	timestamppb "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/spf13/cobra"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -56,6 +55,7 @@ func priorityPerXdsConfig(x *csdspb.PerXdsConfig) int {
 
 func sortPerXdsConfigs(clientStatus *csdspb.ClientStatusResponse) {
 	for _, cfg := range clientStatus.Config {
+		// XdsConfig is deprecated but we support it for backward compatibility with older servers
 		sort.Slice(cfg.XdsConfig, func(i, j int) bool {
 			return priorityPerXdsConfig(cfg.XdsConfig[i]) < priorityPerXdsConfig(cfg.XdsConfig[j])
 		})
@@ -148,6 +148,7 @@ func xdsConfigCommandRunWithError(cmd *cobra.Command, args []string) error {
 				}
 			}
 		} else {
+			// XdsConfig is deprecated but we support it for backward compatibility with older servers
 			for _, x := range cfg.XdsConfig {
 				var m proto.Message
 				switch x.PerXdsConfig.(type) {
@@ -249,6 +250,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 			printStatusEntry(&entry, includeScope)
 		}
 		if len(config.GenericXdsConfigs) == 0 {
+			// XdsConfig is deprecated but we support it for backward compatibility with older servers
 			for _, x := range config.XdsConfig {
 				switch x.PerXdsConfig.(type) {
 				case *csdspb.PerXdsConfig_ListenerConfig:
@@ -272,7 +274,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 						}
 						if packed := dr.GetRouteConfig(); packed != nil {
 							var rc routepb.RouteConfiguration
-							if err := ptypes.UnmarshalAny(packed, &rc); err != nil {
+							if err := packed.UnmarshalTo(&rc); err != nil {
 								return err
 							}
 							e.Name = rc.Name
@@ -290,7 +292,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 						}
 						if packed := dc.GetCluster(); packed != nil {
 							var c clusterpb.Cluster
-							if err := ptypes.UnmarshalAny(packed, &c); err != nil {
+							if err := packed.UnmarshalTo(&c); err != nil {
 								return err
 							}
 							e.Name = c.Name
@@ -308,7 +310,7 @@ func xdsStatusCommandRunWithError(cmd *cobra.Command, args []string) error {
 						}
 						if packed := de.GetEndpointConfig(); packed != nil {
 							var ep endpointpb.ClusterLoadAssignment
-							if err := ptypes.UnmarshalAny(packed, &ep); err != nil {
+							if err := packed.UnmarshalTo(&ep); err != nil {
 								return err
 							}
 							e.Name = ep.ClusterName

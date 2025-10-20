@@ -10,7 +10,7 @@ func EnableDebugOutput() {
 }
 
 // Debugf prints log if debugging is enabled
-func Debugf(format string, v ...interface{}) {
+func Debugf(format string, v ...any) {
 	if enableDebugOutput {
 		log.Printf(format, v...)
 	}

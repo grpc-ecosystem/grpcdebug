@@ -117,6 +117,7 @@ func TestFilterConfigsByScope(t *testing.T) {
 func TestSortPerXdsConfigs(t *testing.T) {
 	t.Parallel()
 	// Test that sortPerXdsConfigs doesn't panic with multiple configs
+	// XdsConfig is deprecated but we test it for backward compatibility
 	clientStatus := &csdspb.ClientStatusResponse{
 		Config: []*csdspb.ClientConfig{
 			{
@@ -170,6 +171,7 @@ func TestSortPerXdsConfigsEmptyConfigs(t *testing.T) {
 func TestSortPerXdsConfigsSingleConfig(t *testing.T) {
 	t.Parallel()
 	// Test backward compatibility with single config
+	// XdsConfig is deprecated but we test it for backward compatibility
 	clientStatus := &csdspb.ClientStatusResponse{
 		Config: []*csdspb.ClientConfig{
 			{
