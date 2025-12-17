@@ -2,12 +2,16 @@ package transport
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	csdspb "github.com/envoyproxy/go-control-plane/envoy/service/status/v3"
-	"github.com/grpc-ecosystem/grpcdebug/cmd/config"
-	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
+	"github.com/hamishimac/grpcdebug/cmd/config"
+	"github.com/hamishimac/grpcdebug/cmd/verbose"
 	"google.golang.org/grpc"
 	zpb "google.golang.org/grpc/channelz/grpc_channelz_v1"
 	"google.golang.org/grpc/credentials"
@@ -22,12 +26,40 @@ var healthClient healthpb.HealthClient
 
 const rpcTimeout = time.Second * 15
 
+func getMTLSConfig(c *config.ServerConfig) (*tls.Config, error) {
+	caCert, err := os.ReadFile(c.TrustFile)
+	if err != nil {
+		return nil, fmt.Errorf("error loading trust: %v", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	cert, err := tls.LoadX509KeyPair(c.CredentialFile, c.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ServerName:   c.ServerNameOverride,
+		ClientCAs:    caCertPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		RootCAs:      caCertPool,
+	}, nil
+}
+
 // Connect connects to the service at address and creates stubs
 func Connect(c config.ServerConfig) {
 	verbose.Debugf("Connecting with %v", c)
 	var err error
 	var credOption grpc.DialOption
-	if c.CredentialFile != "" {
+	if c.Security == config.TypeMTLS {
+		tlsConfig, err := getMTLSConfig(&c)
+		if err != nil {
+			log.Fatalf("failed to create mtls credentials: %v", err)
+		}
+		credOption = grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
+	} else if c.CredentialFile != "" {
 		cred, err := credentials.NewClientTLSFromFile(c.CredentialFile, c.ServerNameOverride)
 		if err != nil {
 			log.Fatalf("failed to create credential: %v", err)

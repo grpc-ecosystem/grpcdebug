@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
+	"github.com/hamishimac/grpcdebug/cmd/transport"
 
 	adminpb "github.com/envoyproxy/go-control-plane/envoy/admin/v3"
 	clusterpb "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"

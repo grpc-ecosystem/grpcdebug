@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
-	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
+	"github.com/hamishimac/grpcdebug/cmd/transport"
+	"github.com/hamishimac/grpcdebug/cmd/verbose"
 	"github.com/spf13/cobra"
 	zpb "google.golang.org/grpc/channelz/grpc_channelz_v1"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"

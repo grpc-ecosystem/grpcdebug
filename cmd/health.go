@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
+	"github.com/hamishimac/grpcdebug/cmd/transport"
 	"github.com/spf13/cobra"
 )
 

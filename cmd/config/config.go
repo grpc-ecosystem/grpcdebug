@@ -7,7 +7,7 @@ import (
 	"path"
 	"runtime"
 
-	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
+	"github.com/hamishimac/grpcdebug/cmd/verbose"
 	"gopkg.in/yaml.v2"
 )
 
@@ -20,6 +20,9 @@ const (
 	// TypeTLS is the TLS security mode, which requires caller to provide
 	// credentials to connect to peer
 	TypeTLS = "tls"
+	// TypeMTLS is the mutual TLS security mode.  For this mode the credentials
+	// supplied must be a certificate file, a key file, and a certificate-trust file.
+	TypeMTLS = "mtls"
 )
 
 // The environment variable name of getting the server configs
@@ -30,6 +33,8 @@ type ServerConfig struct {
 	RealAddress        string       `yaml:"real_address"`
 	Security           SecurityType `yaml:"security"`
 	CredentialFile     string       `yaml:"credential_file"`
+	KeyFile            string       `yaml:"key_file"`
+	TrustFile          string       `yaml:"trust_file"`
 	ServerNameOverride string       `yaml:"server_name_override"`
 }
 

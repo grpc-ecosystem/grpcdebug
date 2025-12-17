@@ -1,7 +1,7 @@
 package main
 
 import (
-	cmd "github.com/grpc-ecosystem/grpcdebug/cmd"
+	cmd "github.com/hamishimac/grpcdebug/cmd"
 
 	// To parse Any protos, ProtoBuf requires the descriptors of the given message
 	// type to present in its descriptor pool. Otherwise, it will fail. Here we

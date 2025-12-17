@@ -8,15 +8,15 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/grpc-ecosystem/grpcdebug/cmd/config"
-	"github.com/grpc-ecosystem/grpcdebug/cmd/transport"
-	"github.com/grpc-ecosystem/grpcdebug/cmd/verbose"
+	"github.com/hamishimac/grpcdebug/cmd/config"
+	"github.com/hamishimac/grpcdebug/cmd/transport"
+	"github.com/hamishimac/grpcdebug/cmd/verbose"
 
 	"github.com/spf13/cobra"
 )
 
 var verboseFlag, timestampFlag bool
-var address, security, credFile, serverNameOverride string
+var address, security, credFile, keyFile, trustFile, serverNameOverride string
 
 // The table formater
 var w = tabwriter.NewWriter(os.Stdout, 10, 0, 3, ' ', 0)
@@ -59,6 +59,12 @@ func initConfig() {
 	if credFile != "" {
 		c.CredentialFile = credFile
 	}
+	if keyFile != "" {
+		c.KeyFile = keyFile
+	}
+	if trustFile != "" {
+		c.TrustFile = trustFile
+	}
 	if serverNameOverride != "" {
 		c.ServerNameOverride = serverNameOverride
 	}
@@ -67,6 +73,20 @@ func initConfig() {
 		if c.CredentialFile == "" {
 			rootCmd.Usage()
 			log.Fatalf("Please specify credential file under [tls] mode.")
+		}
+	} else if security == "mtls" {
+		c.Security = config.TypeMTLS
+		if c.CredentialFile == "" {
+			rootCmd.Usage()
+			log.Fatalf("Please specify credential file under [mtls] mode.")
+		}
+		if c.KeyFile == "" {
+			rootCmd.Usage()
+			log.Fatalf("Please specify key file under [mtls] mode.")
+		}
+		if c.TrustFile == "" {
+			rootCmd.Usage()
+			log.Fatalf("Please specify trust file under [mtls] mode.")
 		}
 	} else if security != "insecure" {
 		rootCmd.Usage()
@@ -90,9 +110,11 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "Print verbose information for debugging")
 	rootCmd.PersistentFlags().BoolVarP(&timestampFlag, "timestamp", "t", false, "Print timestamp as RFC3339 instead of human readable strings")
-	rootCmd.PersistentFlags().StringVar(&security, "security", "insecure", "Defines the type of credentials to use [tls, google-default, insecure]")
+	rootCmd.PersistentFlags().StringVar(&security, "security", "insecure", "Defines the type of credentials to use [tls, mtls, google-default, insecure]")
 	rootCmd.PersistentFlags().StringVar(&credFile, "credential_file", "", "Sets the path of the credential file; used in [tls] mode")
-	rootCmd.PersistentFlags().StringVar(&serverNameOverride, "server_name_override", "", "Overrides the peer server name if non empty; used in [tls] mode")
+	rootCmd.PersistentFlags().StringVar(&keyFile, "key_file", "", "Sets the path of the credential file; used in [tls] and [mtls] modes")
+	rootCmd.PersistentFlags().StringVar(&trustFile, "trust_file", "", "Sets the path of the credential file; used in [mtls] mode")
+	rootCmd.PersistentFlags().StringVar(&serverNameOverride, "server_name_override", "", "Overrides the peer server name if non empty; used in [tls] and [mtls] modes")
 }
 
 // Execute executes the root command.
